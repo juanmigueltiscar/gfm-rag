@@ -41,14 +41,13 @@ def synchronize() -> None:
     if get_world_size() > 1:
         dist.barrier()
 
-#itc
+
 def get_device() -> torch.device:
     if torch.cuda.is_available():
-        device = torch.device("cuda:1")
+        device = torch.device(get_local_rank())
     else:
         device = torch.device("cpu")
     return device
-
 
 
 def setup_for_distributed(is_master: bool) -> None:
@@ -73,6 +72,8 @@ def init_distributed_mode(timeout: None = None) -> None:
         torch.cuda.set_device(get_local_rank())
         if timeout is not None:
             timeout = datetime.timedelta(minutes=timeout)
-        dist.init_process_group("nccl", init_method="env://", timeout=timeout)
+        dist.init_process_group(
+            "nccl", init_method="env://", timeout=timeout, device_id=get_device()
+        )
         synchronize()
         setup_for_distributed(get_rank() == 0)

@@ -28,7 +28,7 @@ def agent_reasoning(
     step = 1
     current_query = query
     thoughts: list[str] = []
-    retrieved_docs = gfmrag_retriever.retrieve(current_query, top_k=cfg.test.top_k)[0]
+    retrieved_docs = gfmrag_retriever.retrieve(current_query, top_k=cfg.test.top_k)
     logs = []
     while step <= cfg.test.max_steps:
         message = qa_prompt_builder.build_input_prompt(
@@ -56,7 +56,7 @@ def agent_reasoning(
 
         step += 1
 
-        new_ret_docs = gfmrag_retriever.retrieve(response, top_k=cfg.test.top_k)[0]
+        new_ret_docs = gfmrag_retriever.retrieve(response, top_k=cfg.test.top_k)
 
         retrieved_docs_dict = {doc["title"]: doc for doc in retrieved_docs}
         for doc in new_ret_docs:
@@ -119,7 +119,6 @@ def main(cfg: DictConfig) -> None:
 
                 # Generate QA response
                 retrieved_docs = result["retrieved_docs"]
-                print(retrieved_docs)
                 message = qa_prompt_builder.build_input_prompt(query, retrieved_docs)
                 qa_response = llm.generate_sentence(message)
 

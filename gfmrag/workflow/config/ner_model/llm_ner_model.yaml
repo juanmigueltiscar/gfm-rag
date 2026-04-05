@@ -1,6 +1,4 @@
 _target_: gfmrag.kg_construction.ner_model.LLMNERModel
-llm_api: "openai"
-model_name: "GaiatecMistralSmall"
-base_url: "http://172.16.128.76:8082/v1"
+llm_api: openai
+model_name: gpt-4o-mini
 max_tokens: 300
-

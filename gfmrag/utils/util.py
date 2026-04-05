@@ -35,8 +35,8 @@ def load_model_from_pretrained(path: str) -> tuple[torch.nn.Module, dict]:
     model_path = cached_file(path, "model.pth")
     if model_path is None:
         raise FileNotFoundError(f"model.pth not found in {path}")
-    state = torch.load(model_path, map_location="cpu", weights_only = True) #ITC MODIFICADO AÑADIDO weights_only= True 
-    model.load_state_dict(state["model"])
+    state = torch.load(model_path, map_location="cpu", weights_only=True)
+    model.load_state_dict(state["model"], strict=False)  # strict=False: compatibilidad entre arquitecturas
     return model, config
 
 

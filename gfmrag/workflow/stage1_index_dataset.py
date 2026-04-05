@@ -1,22 +1,17 @@
 import logging
 import os
-import torch
+
 import dotenv
 import hydra
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig, OmegaConf
-import faiss.contrib.torch_utils
+
 from gfmrag import KGIndexer
 from gfmrag.kg_construction import KGConstructor, QAConstructor
 
 logger = logging.getLogger(__name__)
 
 dotenv.load_dotenv()
-
-torch.cuda.set_device(1)
-
-if "OPENAI_API_KEY" not in os.environ:
-    os.environ['OPENAI_API_KEY'] = 'sk-DUMMYKEYFORLOCALSERVER'
 
 
 @hydra.main(config_path="config", config_name="stage1_index_dataset", version_base=None)

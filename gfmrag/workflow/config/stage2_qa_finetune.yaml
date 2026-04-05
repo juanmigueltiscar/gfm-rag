@@ -4,14 +4,22 @@ hydra:
 
 defaults:
   - _self_
+<<<<<<< HEAD
   - doc_ranker: topk_ranker # The document ranker to use #TAMBIÉN SE PODRÍA CAMBIAR EN EL ENTRENAMIENTO
   - text_emb_model: bge-m3 # The text embedding model to use
 
 seed: 1024 #Inicialización aleatorio de pesos
+=======
+  - doc_ranker: idf_topk_ranker # The document ranker to use
+  - text_emb_model: mpnet # The text embedding model to use
+
+seed: 1024
+>>>>>>> upstream/main
 
 datasets:
   _target_: gfmrag.datasets.QADataset # The QA dataset class
   cfgs:
+<<<<<<< HEAD
     root: ../../bbdd # data root directory (relativo a gfm-rag-main/)
     force_rebuild: False # Whether to force rebuild the dataset
     text_emb_model_cfgs: ${text_emb_model} # The text embedding model configuration
@@ -19,6 +27,22 @@ datasets:
     - data_name
   valid_names: # List of validation dataset names
     - data_name
+=======
+    root: ./data # data root directory
+    force_rebuild: False # Whether to force rebuild the dataset
+    text_emb_model_cfgs: ${text_emb_model} # The text embedding model configuration
+  train_names: # List of training dataset names
+    - hotpotqa_train_example
+  valid_names: # List of validation dataset names
+    - hotpotqa_test
+    - musique_test
+    - 2wikimultihopqa_test
+  init_datasets: True # Whether to pre-process datasets at the beginning, if true, it will pre-process all datasets in the train_names and valid_names at the beginning
+  feat_dim: 768 # Feature dimension for the embeddings, must be given if init_datasets is False
+  max_datasets_in_memory: 10 # Number of datasets to load into memory at once
+  data_loading_workers: 4 # Number of workers for data loading
+
+>>>>>>> upstream/main
 # GFM model configuration
 model:
   _target_: gfmrag.models.GNNRetriever
@@ -59,13 +83,25 @@ optimizer:
 # Training configuration
 train:
   batch_size: 8
+<<<<<<< HEAD
   num_epoch: 60
+=======
+  num_epoch: 20
+>>>>>>> upstream/main
   log_interval: 100
   batch_per_epoch: null
   save_best_only: yes
   save_pretrained: yes # Save the model for QA inference
+<<<<<<< HEAD
   do_eval: yes #CAMBIADO (Además de entrenar, evalúa como va mejorando el rendimiento con dicho entrenamiento)
   timeout: 60 # timeout minutes for multi-gpu training
   init_entities_weight: True
   checkpoint: null
 
+=======
+  do_eval: yes
+  timeout: 60 # timeout minutes for multi-gpu training
+  init_entities_weight: True
+
+  checkpoint: null
+>>>>>>> upstream/main

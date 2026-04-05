@@ -128,8 +128,9 @@ class LLMNERModel(BaseNERModel):
         elif isinstance(self.client, ChatOllama) or isinstance(
             self.client, ChatLlamaCpp):
             response_content = self.client.invoke(query_ner_messages.to_messages())
-            response_content = extract_json_dict(response_content.content)
-            len(response_content.split())
+            if hasattr(response_content, "content"):  # fix PR #31: algunos backends devuelven str
+                response_content = response_content.content
+            response_content = extract_json_dict(response_content)
         elif isinstance(self.client, ChatGoogleGenerativeAI):#ITC_MODIFICADO
             response_content = self.client.invoke(query_ner_messages.to_messages())
             

@@ -6,11 +6,19 @@ defaults:
   - _self_
   - ner_model: llm_ner_model # The NER model to use
   - openie_model: llm_openie_model # The OpenIE model to use
+<<<<<<< HEAD
   - el_model: itc_nomic_ai # The EL model to use
 
 dataset:
   root: ../../bbdd # data root directory (relativo a gfm-rag-main/)
   data_name: data_name # data name
+=======
+  - el_model: colbert_el_model # The EL model to use
+
+dataset:
+  root: ./data # data root directory
+  data_name: hotpotqa # data name
+>>>>>>> upstream/main
 
 kg_constructor:
   _target_: gfmrag.kg_construction.KGConstructor # The KGConstructor class

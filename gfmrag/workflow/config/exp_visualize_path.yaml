@@ -9,14 +9,23 @@ defaults:
 seed: 1024
 
 dataset:
+<<<<<<< HEAD
   root: ../../bbdd # data root directory (relativo a gfm-rag-main/)
   data_name: data_name # data name
+=======
+  root: ./data
+  data_name: hotpotqa_test
+>>>>>>> upstream/main
 
 graph_retriever:
   model_path: rmanluo/GFM-RAG-8M
 
 test:
+<<<<<<< HEAD
   retrieval_batch_size: 1
+=======
+  retrieval_batch_size: 8
+>>>>>>> upstream/main
   top_k: 5
   save_retrieval: False
   save_top_k_entity: 10
@@ -24,4 +33,8 @@ test:
   retrieved_result_path: null
   prediction_result_path: null
   init_entities_weight: True
+<<<<<<< HEAD
   max_sample: 15
+=======
+  max_sample: 10
+>>>>>>> upstream/main

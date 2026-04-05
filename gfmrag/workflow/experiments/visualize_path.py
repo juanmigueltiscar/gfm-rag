@@ -4,7 +4,6 @@ from inspect import cleandoc
 
 import hydra
 import torch
-import dotenv
 import torch.utils
 import torch.utils.data
 from hydra.core.hydra_config import HydraConfig
@@ -19,8 +18,6 @@ from gfmrag.ultra import query_utils
 # A logger for this file
 logger = logging.getLogger(__name__)
 
-dotenv.load_dotenv()
-torch.cuda.set_device(1)
 
 def visualize_path(
     cfg: DictConfig,

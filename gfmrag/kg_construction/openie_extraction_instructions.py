@@ -2,30 +2,21 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
 
 ## General Prompts
-one_shot_passage = """Radio City es la primera emisora de radio FM privada de la India y fue inaugurada el 3 de julio de 2001.
-Reproduce canciones en hindi, inglés y lenguas regionales.
-Radio City se adentró recientemente en los Nuevos Medios en mayo de 2008 con el lanzamiento de un portal musical —PlanetRadiocity.com— que ofrece noticias relacionadas con la música, vídeos, canciones y otras funciones musicales.
-"""
+one_shot_passage = """Radio City
+Radio City is India's first private FM radio station and was started on 3 July 2001.
+It plays Hindi, English and regional songs.
+Radio City recently forayed into New Media in May 2008 with the launch of a music portal - PlanetRadiocity.com that offers music related news, videos, songs, and other music-related features."""
 
-one_shot_passage_entities = """{
-  "entidades_nombradas": [
-    "Radio City",
-    "India",
-    "3 de julio de 2001",
-    "Hindi",
-    "Inglés",
-    "mayo de 2008",
-    "PlanetRadiocity.com"
-  ]
+one_shot_passage_entities = """{"named_entities":
+    ["Radio City", "India", "3 July 2001", "Hindi", "English", "May 2008", "PlanetRadiocity.com"]
 }
-
 """
 
 ## NER Prompts
 
-ner_instruction = """Extrae únicamente las entidades nombradas de tipo científico del siguiente párrafo.
-Responde con una lista en formato JSON.
-Sigue estrictamente el formato JSON requerido.
+ner_instruction = """Your task is to extract named entities from the given paragraph.
+Respond with a JSON list of entities.
+Strictly follow the required JSON format.
 """
 
 ner_input_one_shot = f"""Paragraph:
@@ -48,39 +39,34 @@ ner_prompts = ChatPromptTemplate.from_messages(
 
 ## Post NER OpenIE Prompts
 
-one_shot_passage_triples = """{
-  "triples": [
-    ["Radio City", "ubicada en", "India"],
-    ["Radio City", "es", "emisora de radio FM privada"],
-    ["Radio City", "empezó el", "3 de julio de 2001"],
-    ["Radio City", "reproduce canciones en", "Hindi"],
-    ["Radio City", "reproduce canciones en", "Inglés"],
-    ["Radio City", "se adentró en", "Nuevos Medios"],
-    ["Radio City", "lanzó", "PlanetRadiocity.com"],
-    ["PlanetRadiocity.com", "lanzado en", "mayo de 2008"],
-    ["PlanetRadiocity.com", "es", "portal musical"],
-    ["PlanetRadiocity.com", "ofrece", "noticias"],
-    ["PlanetRadiocity.com", "ofrece", "vídeos"],
-    ["PlanetRadiocity.com", "ofrece", "canciones"]
-  ]
+one_shot_passage_triples = """{"triples": [
+            ["Radio City", "located in", "India"],
+            ["Radio City", "is", "private FM radio station"],
+            ["Radio City", "started on", "3 July 2001"],
+            ["Radio City", "plays songs in", "Hindi"],
+            ["Radio City", "plays songs in", "English"]
+            ["Radio City", "forayed into", "New Media"],
+            ["Radio City", "launched", "PlanetRadiocity.com"],
+            ["PlanetRadiocity.com", "launched in", "May 2008"],
+            ["PlanetRadiocity.com", "is", "music portal"],
+            ["PlanetRadiocity.com", "offers", "news"],
+            ["PlanetRadiocity.com", "offers", "videos"],
+            ["PlanetRadiocity.com", "offers", "songs"]
+    ]
 }
+"""
+
+openie_post_ner_instruction = """Your task is to construct an RDF (Resource Description Framework) graph from the given passages and named entity lists.
+Respond with a JSON list of triples, with each triple representing a relationship in the RDF graph.
+
+Pay attention to the following requirements:
+- Each triple should contain at least one, but preferably two, of the named entities in the list for each passage.
+- Clearly resolve pronouns to their specific names to maintain clarity.
 
 """
 
-openie_post_ner_instruction = """Construye un grafo RDF (Marco de Descripción de Recursos) a partir de los pasajes y las listas de entidades nombradas proporcionadas.
-Responde con una lista JSON de tripletes, donde cada tripleta representa una relación en el grafo RDF.
-
-Presta atención a los siguientes requisitos:
--Cada tripleta debe contener al menos una, pero preferiblemente dos, de las entidades nombradas en la lista correspondiente a cada pasaje.
--Resuelve claramente los pronombres con sus nombres específicos para mantener la claridad.
-
-"""
-
-openie_post_ner_frame = """Convierte el párrafo en un diccionario JSON.
-Debe contener una lista de entidades nombradas y una lista de tripletas.
-Párrafo:
-
-
+openie_post_ner_frame = """Convert the paragraph into a JSON dict, it has a named entity list and a triple list.
+Paragraph:
 ```
 {passage}
 ```

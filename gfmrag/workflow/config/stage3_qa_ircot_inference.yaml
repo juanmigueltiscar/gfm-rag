@@ -4,16 +4,25 @@ hydra:
 
 defaults:
   - _self_
+<<<<<<< HEAD
   - doc_ranker: topk_ranker  #idf_topk_ranker # The document ranker to use
   - agent_prompt: itc_ircot # The agent prompt to use
   - qa_prompt: itc # The QA prompt to use
   - ner_model: llm_ner_model # The NER model to use
   - el_model: itc_nomic_ai # The EL model to use
+=======
+  - doc_ranker: idf_topk_ranker # The document ranker to use
+  - agent_prompt: hotpotqa_ircot # The agent prompt to use
+  - qa_prompt: hotpotqa # The QA prompt to use
+  - ner_model: llm_ner_model # The NER model to use
+  - el_model: colbert_el_model # The EL model to use
+>>>>>>> upstream/main
   - qa_evaluator: hotpotqa # The QA evaluator to use
 
 seed: 1024
 
 dataset:
+<<<<<<< HEAD
   root: ../../bbdd # data root directory (relativo a gfm-rag-main/)
   data_name: data_name # data name
 
@@ -24,6 +33,18 @@ llm:
 
 graph_retriever:
   model_path: outputs/qa_finetune/2025-11-26/12-45-31/pretrained_best # Checkpoint path (relativo a gfm-rag-main/)
+=======
+  root: ./data # data root directory
+  data_name: hotpotqa_test # data name
+
+llm:
+  _target_: gfmrag.llms.ChatGPT # The language model to use
+  model_name_or_path: gpt-3.5-turbo # The model name or path
+  retry: 5 # Number of retries
+
+graph_retriever:
+  model_path: rmanluo/GFM-RAG-8M # Checkpoint path of the pre-trained GFM-RAG model
+>>>>>>> upstream/main
   doc_ranker: ${doc_ranker} # The document ranker to use
   ner_model: ${ner_model} # The NER model to usek
   el_model: ${el_model} # The EL model to use

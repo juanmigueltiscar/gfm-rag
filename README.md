@@ -34,6 +34,10 @@ We first build a knowledge graph index (KG-index) from the documents to capture 
 For more details, please refer to our [project page](https://rmanluo.github.io/gfm-rag/) and [paper](https://www.arxiv.org/abs/2502.01113).
 
 ## 🎉 News
+- **[2026-01-27]** We are excited to share that [G-reasoner](https://arxiv.org/abs/2509.24276) has been accepted by [ICLR 2026](https://iclr.cc/Conferences/2026).
+- **[2025-10-01]** Checkout our latest progress: [G-reasoner: Foundation Models for Unified Reasoning over Graph-structured Knowledge](https://arxiv.org/abs/2509.24276). Code and model will be updated soon.
+- **[2025-09-19]** We are excited to share that [GFM-RAG](https://www.arxiv.org/abs/2502.01113) has been accepted by [NeurIPS 2025](https://neurips.cc/Conferences/2025).
+- **[2025-06-03]** We have released a new version of [GFM-RAG (2025-06-03)](https://huggingface.co/rmanluo/GFM-RAG-8M/commit/62cf6398c5875af1c4e04bbb35e4c3b21904d4ac) which is pre-trained on 286 KGs. Performance comparison with the previous version can be found in [CHANGELOG](docs/CHANGELOG.md).
 - **[2025-02-06]** We have released the GFM-RAG codebase and a [8M pre-trained model](https://huggingface.co/rmanluo/GFM-RAG-8M). 🚀
 
 ## Features
@@ -70,7 +74,7 @@ pip install gfmrag
 
 ### Prepare Data
 
-We have provided the testing split and an example of the training data in [here](https://drive.google.com/drive/folders/11xuSKD20c1X0bJRZRVvRc8ocW7wgX7Rw?usp=sharing).
+We have provided the testing split and full training data in [here](https://1drv.ms/f/c/cb4bbdfe5951d1a1/IgDTnyNJiiAPTJKqY1KizEVMAQ1jX5wAf94YMlF-VyLvscI?e=bgp0Yv).
 
 You need to prepare the following files:
 
@@ -308,9 +312,7 @@ torchrun --nproc_per_node=4 --nnodes=2 -m gfmrag.workflow.stage2_qa_finetune
 
 ### Download datasets
 
-We are working on releasing the full training datasets.
-
-We have provided the testing split and an example of the training data in [here](https://drive.google.com/drive/folders/11xuSKD20c1X0bJRZRVvRc8ocW7wgX7Rw?usp=sharing).
+We have provided the testing split and full training data in [here](https://1drv.ms/f/c/cb4bbdfe5951d1a1/IgDTnyNJiiAPTJKqY1KizEVMAQ1jX5wAf94YMlF-VyLvscI?e=bgp0Yv).
 
 Download the datasets and put them under the `data` directory.
 
@@ -472,10 +474,21 @@ We greatly appreciate the following repositories for their help to this project:
 If you find this repository helpful, please consider citing our paper:
 
 ```bibtex
+@inproceedings{
+	luo2026greasoner,
+	title={G-reasoner: Foundation Models for Unified Reasoning over Graph-structured Knowledge},
+	author={Linhao Luo and Zicheng Zhao and Junnan Liu and Zhangchi Qiu and Junnan Dong and Serge Panev and Chen Gong and Thuy-Trang Vu and Gholamreza Haffari and Dinh Phung and Alan Wee-Chung Liew and Shirui Pan},
+	booktitle={The Fourteenth International Conference on Learning Representations},
+	year={2026},
+	url={https://openreview.net/forum?id=zJm9nmoahk}
+}
+```
+
+```bibtex
 @article{luo2025gfmrag,
   title={GFM-RAG: Graph Foundation Model for Retrieval Augmented Generation},
   author={Luo, Linhao and Zhao, Zicheng and Haffari, Gholamreza and Phung, Dinh and Gong, Chen and Pan, Shirui},
-  journal={arXiv preprint arXiv:2502.01113},
+  journal={NeurIPS 2025},
   year={2025}
 }
 ```

@@ -96,15 +96,13 @@ def synchronize():
     if get_world_size() > 1:
         dist.barrier()
 
-#itc
-def get_device() -> torch.device:
-    if torch.cuda.is_available():
-        device = torch.device("cuda:1")
+
+def get_device(cfg):
+    if cfg.train.gpus:
+        device = torch.device(cfg.train.gpus[get_rank()])
     else:
         device = torch.device("cpu")
     return device
-
-
 
 
 def create_working_directory(cfg):

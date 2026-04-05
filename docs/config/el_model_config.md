@@ -9,33 +9,12 @@ An example of a Colbert EL model configuration file is shown below:
     --8<-- "gfmrag/workflow/config/el_model/colbert_el_model.yaml"
     ```
 
-To use colbertv2.0 model, you need to download the [checkpoint file](https://downloads.cs.stanford.edu/nlp/data/colbert/colbertv2/colbertv2.0.tar.gz) and unzip it into the `checkpoint_path` (default: `tmp/`).
-
-```bash
-wget https://downloads.cs.stanford.edu/nlp/data/colbert/colbertv2/colbertv2.0.tar.gz
-tar -zxvf colbertv2.0.tar.gz -C tmp/
-```
-
-An example checkpoint file structure is shown below:
-
-```
-tmp/colbertv2.0/
-├── artifact.metadata
-├── tokenizer.json
-├── special_tokens_map.json
-├── config.json
-├── tokenizer_config.json
-├── vocab.txt
-└── pytorch_model.bin
-```
-
 |      Parameter      |                           Options                            |                                               Note                                               |
 | :-----------------: | :----------------------------------------------------------: | :----------------------------------------------------------------------------------------------: |
 |     `_target_`      | `gfmrag.kg_construction.entity_linking_model.ColbertELModel` | The class name of [Colbert EL model][gfmrag.kg_construction.entity_linking_model.ColbertELModel] |
-|  `checkpoint_path`  |                             None                             |                                 The path to the checkpoint file.                                 |
+|  `model_name_or_path`  |                             None                             |                                 The path to the checkpoint file.                                 |
 |       `root`        |                             None                             |                                 The root directory of the model.                                 |
-|  `doc_index_name`   |                             None                             |                                 The name of the document index.                                  |
-| `phrase_index_name` |                             None                             |                                  The name of the phrase index.                                   |
+| `force` |                     `True`, `False`                          | Whether to force re-indexing the entities. If set to `True`, it will delete the existing index and re-index the entities. |
 
 Please refer to [ColbertELModel][gfmrag.kg_construction.entity_linking_model.ColbertELModel] for details on the other parameters.
 

@@ -11,12 +11,21 @@ defaults:
 seed: 1024
 
 dataset:
+<<<<<<< HEAD
   root: ../../bbdd # data root directory (relativo a gfm-rag-main/)
   data_name: data_name # data name
 
 llm:
   _target_: gfmrag.llms.Gemini
   model_name_or_path: gemini-2.0-flash-lite
+=======
+  root: ./data
+  data_name: hotpotqa_test
+
+llm:
+  _target_: gfmrag.llms.ChatGPT
+  model_name_or_path: gpt-3.5-turbo
+>>>>>>> upstream/main
   retry: 5
 
 graph_retriever:
