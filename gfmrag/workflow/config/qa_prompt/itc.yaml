@@ -1,0 +1,24 @@
+system_prompt: Eres un asistente inteligente, experto en ayudar a los usuarios mediante razonamientos complejos de varios pasos a través de múltiples documentos. Esta tarea se ilustra mediante demostraciones, cada una compuesta por un conjunto de documentos emparejados con una pregunta relevante y los pensamientos de razonamiento multiescalonado. Tu tarea es generar UN pensamiento para el paso actual, ¡NO generes todos los pensamientos de una vez! Si llegas a lo que crees que es el paso final, empieza con "**Entonces la respuesta es:".
+doc_prompt: "Título de Wikipedia: {title}\n{content}\n"
+question_prompt: "Pregunta: {question}\n Pensamiento "
+examples:
+  - input: |-
+     Título de Wikipedia: Milk and Honey (álbum)  
+      *Milk and Honey* es un álbum de John Lennon y Yoko Ono lanzado en 1984. Tras la recopilación "The John Lennon Collection", es el octavo y último álbum de estudio de Lennon, y el primer lanzamiento póstumo de música nueva de Lennon, habiendo sido grabado en los últimos meses de su vida durante y después de las sesiones para su álbum de 1980 "Double Fantasy". Fue ensamblado por Yoko Ono en asociación con el sello Geffen.
+      Título de Wikipedia: Museo de John Lennon  
+      El Museo de John Lennon (ジョン・レノン・ミュージアム , Jon Renon Myūjiamu) fue un museo ubicado dentro del Saitama Super Arena en Chūō-ku, Saitama, prefectura de Saitama, Japón. Fue establecido para preservar el conocimiento sobre la vida y carrera musical de John Lennon. Exhibía la colección de recuerdos de Lennon de su viuda Yoko Ono, así como otras exposiciones. El museo abrió el 9 de octubre de 2000, en el 60.º aniversario del nacimiento de Lennon, y cerró el 30 de septiembre de 2010, cuando expiró su contrato de exhibición con Yoko Ono. La visita al museo comenzaba con un mensaje de bienvenida y un cortometraje narrado por Yoko Ono (en japonés, con auriculares en inglés disponibles), y terminaba en una "sala de reflexión" de estilo vanguardista llena de sillas frente a una proyección de palabras e imágenes en movimiento. Después de esta sala, había una tienda de regalos con recuerdos de John Lennon disponibles.
+
+      Título de Wikipedia: Walls and Bridges  
+      *Walls and Bridges* es el quinto álbum de estudio del músico inglés John Lennon. Fue publicado por Apple Records el 26 de septiembre de 1974 en Estados Unidos y el 4 de octubre en el Reino Unido. Escrito, grabado y publicado durante su separación de 18 meses de Yoko Ono, el álbum capturó a Lennon en medio de su "fin de semana perdido". *Walls and Bridges* fue un álbum número uno en Estados Unidos según "Billboard" y presentó dos sencillos exitosos: "Whatever Gets You thru the Night" y "#9 Dream". El primero de estos fue el primer sencillo número uno de Lennon en Estados Unidos como solista, y su único éxito en las listas tanto en EE. UU. como en Reino Unido durante su vida.
+
+      Título de Wikipedia: Nobody Loves You (When You're Down and Out)  
+      "Nobody Loves You (When You're Down and Out)" es una canción escrita por John Lennon, lanzada en su álbum de 1974 *Walls and Bridges*. La canción está incluida en la recopilación de 1986 *Menlove Ave.*, la caja de 1990 *Lennon*, la de 1998 *John Lennon Anthology*, la recopilación doble de 2005 "", y la caja de 2010 *Gimme Some Truth*.
+
+      Título de Wikipedia: Give Peace a Chance  
+      "Give Peace a Chance" es una canción antibélica escrita por John Lennon (acreditada a Lennon–McCartney), e interpretada junto a Yoko Ono en Montreal, Quebec, Canadá. Lanzada como sencillo en 1969 por la Plastic Ono Band en Apple Records (catálogo Apple 13 en Reino Unido, Apple 1809 en Estados Unidos), fue el primer sencillo en solitario de Lennon, lanzado cuando aún era miembro de los Beatles, y se convirtió en un himno del movimiento antibélico estadounidense durante los años 70. Alcanzó el puesto 14 en la lista Hot 100 de "Billboard" y el puesto 2 en la lista de sencillos británica.
+
+      Pregunta: Nobody Loves You fue escrita por John Lennon y lanzada en qué álbum, que fue publicado por Apple Records, y fue escrito, grabado y lanzado durante su separación de 18 meses de Yoko Ono?  
+      Pensamiento:
+    response: |-
+      El álbum publicado por Apple Records, y escrito, grabado y lanzado durante la separación de 18 meses de John Lennon de Yoko Ono es *Walls and Bridges*. "Nobody Loves You" fue escrita por John Lennon y se incluye en el álbum *Walls and Bridges*.  
+      **Entonces, la respuesta es: *Walls and Bridges*.
