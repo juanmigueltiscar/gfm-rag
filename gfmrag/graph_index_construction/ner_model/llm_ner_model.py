@@ -37,13 +37,16 @@ Question: {}
 class LLMNERModel(BaseNERModel):
     """A Named Entity Recognition (NER) model that uses Language Models (LLMs) for entity extraction.
 
-    This class implements entity extraction using various LLM backends (OpenAI, Together, Ollama, llama.cpp)
+    This class implements entity extraction using various LLM backends (OpenAI, Together, Ollama, llama.cpp, vLLM)
     through the Langchain interface. It processes text input and returns a list of extracted named entities.
 
     Args:
-        llm_api (Literal["openai", "nvidia", "together", "ollama", "llama.cpp"]): The LLM backend to use. Defaults to "openai".
+        llm_api (Literal["openai", "nvidia", "together", "ollama", "llama.cpp", "vllm"]): The LLM backend to use. Defaults to "openai".
         model_name (str): Name of the specific model to use. Defaults to "gpt-4o-mini".
         max_tokens (int): Maximum number of tokens in the response. Defaults to 1024.
+        json_mode (bool): Whether to use JSON mode (response_format) for structured output. Defaults to True.
+        base_url (str | None): Base URL for vLLM server. Used when llm_api="vllm". Defaults to None.
+        api_key (str | None): API key for vLLM server. Used when llm_api="vllm". Defaults to None.
 
     Methods:
         __call__: Extracts named entities from the input text.
@@ -55,27 +58,42 @@ class LLMNERModel(BaseNERModel):
     def __init__(
         self,
         llm_api: Literal[
-            "openai", "nvidia", "together", "ollama", "llama.cpp"
+            "openai", "nvidia", "together", "ollama", "llama.cpp", "vllm"
         ] = "openai",
         model_name: str = "gpt-4o-mini",
         max_tokens: int = 1024,
+        json_mode: bool = True,
+        base_url: str | None = None,
+        api_key: str | None = None,
     ):
         """Initialize the LLM-based NER model.
 
         Args:
-            llm_api (Literal["openai", "nvidia", "together", "ollama", "llama.cpp"]): The LLM API provider to use.
+            llm_api (Literal["openai", "nvidia", "together", "ollama", "llama.cpp", "vllm"]): The LLM API provider to use.
                 Defaults to "openai".
             model_name (str): Name of the language model to use.
                 Defaults to "gpt-4o-mini".
             max_tokens (int): Maximum number of tokens for model output.
                 Defaults to 1024.
+            json_mode (bool): Whether to use JSON mode (response_format) for structured output.
+                Defaults to True (preserves backward compatibility with OpenAI).
+            base_url (str | None): Base URL for vLLM server. Used when llm_api="vllm".
+                Defaults to None.
+            api_key (str | None): API key for vLLM server. Used when llm_api="vllm".
+                Defaults to None.
         """
 
         self.llm_api = llm_api
         self.model_name = model_name
         self.max_tokens = max_tokens
+        self.json_mode = json_mode
 
-        self.client = init_langchain_model(llm_api, model_name)
+        self.client = init_langchain_model(
+            llm_api,
+            model_name,
+            base_url=base_url,
+            api_key=api_key,
+        )
 
     def __call__(self, text: str) -> list:
         """Process text input to extract named entities using different chat models.
@@ -109,8 +127,8 @@ class LLMNERModel(BaseNERModel):
         )
         query_ner_messages = query_ner_prompts.format_prompt()
 
-        json_mode = False
-        if isinstance(self.client, ChatOpenAI):  # JSON mode
+        json_mode_used = False
+        if self.json_mode:  # JSON mode
             chat_completion = self.client.invoke(
                 query_ner_messages.to_messages(),
                 temperature=0,
@@ -120,7 +138,7 @@ class LLMNERModel(BaseNERModel):
             )
             response_content = chat_completion.content
             chat_completion.response_metadata["token_usage"]["total_tokens"]
-            json_mode = True
+            json_mode_used = True
         elif isinstance(self.client, ChatOllama) or isinstance(
             self.client, ChatLlamaCpp
         ):
@@ -139,7 +157,7 @@ class LLMNERModel(BaseNERModel):
             response_content = extract_json_dict(response_content)
             chat_completion.response_metadata["token_usage"]["total_tokens"]
 
-        if not json_mode:
+        if not json_mode_used:
             try:
                 assert "named_entities" in response_content
                 response_content = str(response_content)

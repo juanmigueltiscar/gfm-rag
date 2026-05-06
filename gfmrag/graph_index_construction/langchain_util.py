@@ -84,6 +84,18 @@ def init_langchain_model(
 
         return ChatLlamaCpp(**llama_kwargs)
 
+    elif llm == "vllm":
+        # vLLM server with OpenAI-compatible API
+        return ChatOpenAI(
+            openai_api_base=kwargs.pop("base_url", None),
+            openai_api_key=kwargs.pop("api_key", "EMPTY"),
+            model=model_name,
+            temperature=temperature,
+            max_retries=max_retries,
+            timeout=timeout,
+            **kwargs,
+        )
+
     else:
         # add any LLMs you want to use here using LangChain
         raise NotImplementedError(f"LLM '{llm}' not implemented yet.")

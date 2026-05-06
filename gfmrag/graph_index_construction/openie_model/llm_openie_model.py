@@ -32,12 +32,15 @@ class LLMOPENIEModel(BaseOPENIEModel):
     and relation extraction using various LLM backends like OpenAI, Together, Ollama, or llama.cpp.
 
     Args:
-        llm_api (Literal["openai", "together", "ollama", "llama.cpp"]): The LLM backend to use.
+        llm_api (Literal["openai", "together", "ollama", "llama.cpp", "vllm"]): The LLM backend to use.
             Defaults to "openai".
         model_name (str): Name of the specific model to use. Defaults to "gpt-4o-mini".
         max_ner_tokens (int): Maximum number of tokens for NER output. Defaults to 1024.
         max_triples_tokens (int): Maximum number of tokens for relation triples output.
             Defaults to 4096.
+        json_mode (bool): Whether to use JSON mode (response_format) for structured output. Defaults to True.
+        base_url (str | None): Base URL for vLLM server. Used when llm_api="vllm". Defaults to None.
+        api_key (str | None): API key for vLLM server. Used when llm_api="vllm". Defaults to None.
 
     Attributes:
         llm_api: The LLM backend being used
@@ -61,22 +64,31 @@ class LLMOPENIEModel(BaseOPENIEModel):
     def __init__(
         self,
         llm_api: Literal[
-            "openai", "nvidia", "together", "ollama", "llama.cpp"
+            "openai", "nvidia", "together", "ollama", "llama.cpp", "vllm"
         ] = "openai",
         model_name: str = "gpt-4o-mini",
         max_ner_tokens: int = 1024,
         max_triples_tokens: int = 4096,
+        json_mode: bool = True,
+        base_url: str | None = None,
+        api_key: str | None = None,
         n_ctx: int | None = None,
         low_vram: bool = False,
     ):
         """Initialize LLM-based OpenIE model.
 
         Args:
-            llm_api (Literal["openai", "nvidia", "together", "ollama", "llama.cpp"]): The LLM API provider to use.
+            llm_api (Literal["openai", "nvidia", "together", "ollama", "llama.cpp", "vllm"]): The LLM API provider to use.
                 Defaults to "openai".
             model_name (str): Name of the language model to use. Defaults to "gpt-4o-mini".
             max_ner_tokens (int): Maximum number of tokens for NER processing. Defaults to 1024.
             max_triples_tokens (int): Maximum number of tokens for triple extraction. Defaults to 4096.
+            json_mode (bool): Whether to use JSON mode (response_format) for structured output.
+                Defaults to True (preserves backward compatibility with OpenAI).
+            base_url (str | None): Base URL for vLLM server. Used when llm_api="vllm".
+                Defaults to None.
+            api_key (str | None): API key for vLLM server. Used when llm_api="vllm".
+                Defaults to None.
             n_ctx: Context window size (llama.cpp / ollama only)
             low_vram: Enable low VRAM mode (llama.cpp only)
 
@@ -85,12 +97,14 @@ class LLMOPENIEModel(BaseOPENIEModel):
             model_name: Name of the language model
             max_ner_tokens: Token limit for NER
             max_triples_tokens: Token limit for triples
+            json_mode: Whether JSON mode is enabled
             client: Initialized language model client
         """
         self.llm_api = llm_api
         self.model_name = model_name
         self.max_ner_tokens = max_ner_tokens
         self.max_triples_tokens = max_triples_tokens
+        self.json_mode = json_mode
         self.n_ctx = n_ctx
         self.low_vram = low_vram
 
@@ -98,6 +112,8 @@ class LLMOPENIEModel(BaseOPENIEModel):
             llm=llm_api,
             model_name=model_name,
             temperature=0.0,
+            base_url=base_url,
+            api_key=api_key,
             n_ctx=n_ctx,
             low_vram=low_vram,
         )
@@ -121,7 +137,7 @@ class LLMOPENIEModel(BaseOPENIEModel):
         ner_messages = ner_prompts.format_prompt(user_input=text)
 
         try:
-            if isinstance(self.client, ChatOpenAI):  # JSON mode
+            if self.json_mode:  # JSON mode
                 chat_completion = self.client.invoke(
                     ner_messages.to_messages(),
                     temperature=0,
@@ -183,7 +199,7 @@ class LLMOPENIEModel(BaseOPENIEModel):
             passage=text, named_entity_json=json.dumps(named_entity_json)
         )
         try:
-            if isinstance(self.client, ChatOpenAI):  # JSON mode
+            if self.json_mode:  # JSON mode
                 chat_completion = self.client.invoke(
                     openie_messages.to_messages(),
                     temperature=0,
