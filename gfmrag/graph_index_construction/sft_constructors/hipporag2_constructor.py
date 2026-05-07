@@ -6,10 +6,10 @@ from collections import defaultdict
 from multiprocessing.dummy import Pool
 from typing import Any
 
-import faiss
 import numpy as np
 import pandas as pd
 import torch
+import torch.nn.functional as F
 
 from gfmrag.graph_index_datasets.graph_index_dataset import GraphIndexDataset
 from gfmrag.text_emb_models import BaseTextEmbModel
@@ -94,13 +94,13 @@ class HippoRAG2Constructor(BaseSFTConstructor):
         self.nodes_by_type: dict[str, list[str]] = {}
         self.node_texts_by_type: dict[str, list[str]] = {}
         self.node_embeddings_by_type: dict[str, np.ndarray] = {}
-        self.node_indices_by_type: dict[str, faiss.IndexFlatIP] = {}
+        self.node_indices_by_type: dict[str, torch.Tensor] = {}
 
         self.document_nodes: list[str] = []
 
         self.facts: list[tuple[str, str, str]] = []
         self.fact_texts: list[str] = []
-        self.fact_index: faiss.IndexFlatIP | None = None
+        self.fact_index: torch.Tensor | None = None
         self.selected_start_types: list[str] = []
         self.selected_target_types: list[str] = []
         self.enable_fact_retrieval: bool = False
@@ -137,23 +137,20 @@ class HippoRAG2Constructor(BaseSFTConstructor):
             show_progress_bar=False,
         )
         if isinstance(embeddings, torch.Tensor):
-            emb = embeddings.detach().cpu().numpy().astype(np.float32)
+            emb = embeddings.detach().cpu()
         else:
-            emb = np.asarray(embeddings, dtype=np.float32)
+            emb = torch.from_numpy(np.asarray(embeddings, dtype=np.float32))
 
         if emb.ndim == 1:
-            emb = emb.reshape(1, -1)
+            emb = emb.unsqueeze(0)
 
-        # Normalize to make inner product equivalent to cosine similarity.
-        faiss.normalize_L2(emb)
-        return emb
+        emb = F.normalize(emb, p=2, dim=1)
+        return emb.numpy().astype(np.float32)
 
-    def _build_faiss_index(self, embeddings: np.ndarray) -> faiss.IndexFlatIP | None:
+    def _build_faiss_index(self, embeddings: np.ndarray) -> torch.Tensor | None:
         if embeddings.size == 0:
             return None
-        index = faiss.IndexFlatIP(embeddings.shape[1])
-        index.add(embeddings)  # type: ignore[call-arg]
-        return index
+        return torch.from_numpy(embeddings).float()
 
     def _safe_parse_attributes(self, attrs: str) -> dict:
         if not attrs:
@@ -217,13 +214,16 @@ class HippoRAG2Constructor(BaseSFTConstructor):
         if index is None or top_k <= 0:
             return [], np.array([], dtype=np.float32)
 
-        k = min(top_k, index.ntotal)
+        k = min(top_k, index.shape[0])
         if k <= 0:
             return [], np.array([], dtype=np.float32)
 
-        scores, local_ids = index.search(query_embedding, k)  # type: ignore[call-arg]
-        scores_1d = np.squeeze(scores).astype(np.float32)
-        local_ids_1d = np.squeeze(local_ids)
+        query_tensor = torch.from_numpy(query_embedding).float()
+        scores = torch.mm(query_tensor, index.T)
+        top_scores, top_ids = torch.topk(scores, k, largest=True)
+
+        scores_1d = top_scores.squeeze(0).numpy().astype(np.float32)
+        local_ids_1d = top_ids.squeeze(0).numpy()
 
         if scores_1d.ndim == 0:
             scores_1d = np.array([float(scores_1d)], dtype=np.float32)
@@ -252,13 +252,16 @@ class HippoRAG2Constructor(BaseSFTConstructor):
             logger.warning("No facts available for retrieval. Returning empty lists.")
             return [], [], {}
 
-        k = min(top_k, self.fact_index.ntotal)
+        k = min(top_k, self.fact_index.shape[0])
         if k <= 0:
             return [], [], {}
 
-        scores, ids = self.fact_index.search(query_embedding, k)  # type: ignore[call-arg]
-        scores_1d = np.squeeze(scores).astype(np.float32)
-        ids_1d = np.squeeze(ids)
+        query_tensor = torch.from_numpy(query_embedding).float()
+        scores = torch.mm(query_tensor, self.fact_index.T)
+        top_scores, top_ids = torch.topk(scores, k, largest=True)
+
+        scores_1d = top_scores.squeeze(0).numpy().astype(np.float32)
+        ids_1d = top_ids.squeeze(0).numpy()
 
         if scores_1d.ndim == 0:
             scores_1d = np.array([float(scores_1d)], dtype=np.float32)

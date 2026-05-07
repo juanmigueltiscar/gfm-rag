@@ -5,7 +5,6 @@ from typing import Literal
 from langchain_community.chat_models import ChatLlamaCpp, ChatOllama
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
 
 from gfmrag.graph_index_construction.langchain_util import init_langchain_model
 from gfmrag.graph_index_construction.utils import extract_json_dict, processing_phrases

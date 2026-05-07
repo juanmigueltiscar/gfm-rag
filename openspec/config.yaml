@@ -4,14 +4,14 @@ context: |
   Write in Spanish, but:
   - Keep technical terms like "API", "REST", "GraphQL" in English
   - Code examples and file paths remain in English
-  
+
   Tech stack: Python 3.12
-  
+
   Rules:
     proposal:
        - Keep proposals under 1500 words
        - Always include a "Non-goals" section
-    
+
     tasks:
        - Break tasks into chunks of max 2 hours
 

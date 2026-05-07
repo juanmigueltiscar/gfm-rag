@@ -55,12 +55,14 @@ SFTTrainer(BaseTrainer)
 @dataclass
 class TaskDataset:
     name: str
-    graph: Any                # PyG Data object
+    graph: Any  # PyG Data object
     data_loader: DataLoader
+
 
 @dataclass(kw_only=True)
 class PretrainTaskDataset(TaskDataset):
     val_filtered_graph: Data  # filtered graph for KGC ranking
+
 
 @dataclass
 class SFTLoss:

@@ -4,24 +4,22 @@
 
 ```bash
 # Install (requires CUDA 12+, Python 3.12)
-poetry install
+uv sync
+uv sync --group tests   # installs test dependencies (pandas, datasets, einops)
 pre-commit install
 
 # Run all quality checks (equiv to CI)
 pre-commit run --all-files --show-diff-on-failure
 
 # Run a single test
-poetry run python -m pytest tests/test_gfmrag_retriever.py -k test_retrieve_top_k
-
-# Build / serve docs locally
-poetry run mkdocs serve
+uv run python -m pytest tests/test_gfmrag_retriever.py -k test_retrieve_top_k
 ```
 
 **Order matters**: lint/format/mypy all run via pre-commit. CI does NOT run unit tests — tests are not in automation, must be run manually.
 
 ## Architecture
 
-- **Single package** `gfmrag` published to PyPI via Poetry.
+- **Single package** `gfmrag` published to PyPI via uv.
 - **Two model families** with separate Hydra config trees under `gfmrag/workflow/config/`:
   - `gfm_rag/` — GFM-RAG-8M model
   - `gfm_reasoner/` — G-reasoner-34M model

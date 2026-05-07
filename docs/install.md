@@ -7,7 +7,7 @@ This page covers environment setup only. For usage, go to [Quick Start](getting_
 - Python 3.12
 - CUDA 12 or newer for GPU-backed training and inference
 - `nvcc` available when compiling the `rspmm` kernel
-- Poetry if you plan to install from source or contribute to the repository
+- [uv](https://docs.astral.sh/uv/) if you plan to install from source or contribute to the repository
 
 ## Install With Conda
 
@@ -32,7 +32,7 @@ cd gfm-rag
 conda create -n gfmrag python=3.12
 conda activate gfmrag
 conda install cuda-toolkit -c nvidia/label/cuda-12.6.3
-poetry install
+uv sync
 ```
 
 ## Optional LLM Backends

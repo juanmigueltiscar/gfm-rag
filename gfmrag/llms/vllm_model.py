@@ -51,9 +51,7 @@ class VLLMModel(BaseLanguageModel):
 
         # Health check: verify the vLLM server is reachable
         if not self._is_api_available():
-            raise RuntimeError(
-                f"vLLM API is not available at {self.base_url}"
-            )
+            raise RuntimeError(f"vLLM API is not available at {self.base_url}")
 
         # Auto-detect maximun_token from server if not provided
         if maximun_token is not None:
@@ -185,7 +183,9 @@ class VLLMModel(BaseLanguageModel):
                 result = response.choices[0].message.content.strip()  # type: ignore
                 return result
             except Exception as e:
-                logger.error(f"vLLM generation error (attempt {cur_retry + 1}/{num_retry + 1}): {e}")
+                logger.error(
+                    f"vLLM generation error (attempt {cur_retry + 1}/{num_retry + 1}): {e}"
+                )
                 time.sleep(30)
                 cur_retry += 1
                 error = e

@@ -7,13 +7,13 @@ This page is for contributors maintaining the repository and documentation site.
 | Name | Installation | Purpose |
 | --- | --- | --- |
 | Python 3.12 | <https://www.python.org/downloads/> | Runtime and package development |
-| Poetry | <https://python-poetry.org/docs/#installation> | Dependency management and packaging |
+| uv | <https://docs.astral.sh/uv/#installation> | Dependency management and packaging |
 | CUDA toolkit | NVIDIA or conda packages | Builds the `rspmm` extension and supports GPU workflows |
 
 ## Local Setup
 
 ```bash
-poetry install
+uv sync
 pre-commit install
 ```
 
@@ -78,5 +78,5 @@ pre-commit run --all-files
 Build the package:
 
 ```bash
-poetry build
+uv build
 ```

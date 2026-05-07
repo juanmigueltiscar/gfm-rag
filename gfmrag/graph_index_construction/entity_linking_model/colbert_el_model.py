@@ -4,9 +4,15 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from pylate.indexes import PLAID
-from pylate.models import ColBERT as ColBERTModel
-from pylate.retrieve import ColBERT as ColBERTRetriever
+try:
+    from pylate.indexes import PLAID
+    from pylate.models import ColBERT as ColBERTModel
+    from pylate.retrieve import ColBERT as ColBERTRetriever
+except ImportError:
+    raise ImportError(
+        "pylate is required for ColbertELModel. "
+        "Install it with: pip install gfmrag[full] or uv sync --extra full"
+    ) from None
 
 from gfmrag.graph_index_construction.utils import processing_phrases
 

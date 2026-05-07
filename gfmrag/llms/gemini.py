@@ -3,17 +3,16 @@ import os
 import time
 
 import dotenv
+import google.generativeai as genai
 
 from .base_language_model import BaseLanguageModel
 
-import google.generativeai as genai 
-
-#from google import genai
+# from google import genai
 
 logger = logging.getLogger(__name__)
 # Disable OpenAI and httpx logging
 # Configure logging level for specific loggers by name
-#ITC_MODIFICADO (todo el script es nuevo)
+# ITC_MODIFICADO (todo el script es nuevo)
 
 dotenv.load_dotenv()
 
@@ -48,13 +47,12 @@ class Gemini(BaseLanguageModel):
         self.model_name = model_name_or_path
         self.maximun_token: int = 12288
 
-        genai.configure(api_key=os.environ['GOOGLE_API_KEY'])
+        genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
         self.client = genai.GenerativeModel(self.model_name)
-        
 
     def token_len(self, text: str) -> int:
         """Returns the number of tokens used by a list of messages."""
-        
+
         return self.client.count_tokens(text).total_tokens
 
     def generate_sentence(
@@ -106,15 +104,15 @@ class Gemini(BaseLanguageModel):
         while cur_retry <= num_retry:
             try:
                 response = self.client.generate_content(
-                contents=[
-                            {
-                                "role": "user",  # El rol de qui està enviant el missatge
-                                "parts": [
-                                            {"text": message_string}  # El contingut del missatge
-                                        ]
-                            }
-                        ],
-                generation_config={"temperature": 0.0}  # Opció de temperatura
+                    contents=[
+                        {
+                            "role": "user",  # El rol de qui està enviant el missatge
+                            "parts": [
+                                {"text": message_string}  # El contingut del missatge
+                            ],
+                        }
+                    ],
+                    generation_config={"temperature": 0.0},  # Opció de temperatura
                 )
 
                 result = response.text.strip()  # type: ignore

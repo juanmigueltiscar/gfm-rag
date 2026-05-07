@@ -50,10 +50,20 @@ All share the same `tmp_dir` property pattern (generates `<root>/<data_name>/`).
 `base_graph_constructor.py` defines four `TypedDict` types that serve as the canonical data contract for graph data flowing between modules:
 
 ```python
-class Node(TypedDict):     name, type, attributes, uid(optional)
-class Edge(TypedDict):     source, relation, target, attributes
-class Relation(TypedDict): name, attributes, uid(optional)
-class Graph(TypedDict):    nodes, relations, edges
+class Node(TypedDict):
+    name, type, attributes, uid(optional)
+
+
+class Edge(TypedDict):
+    source, relation, target, attributes
+
+
+class Relation(TypedDict):
+    name, attributes, uid(optional)
+
+
+class Graph(TypedDict):
+    nodes, relations, edges
 ```
 
 ### 6. Parallel Worker Pool
@@ -144,20 +154,22 @@ HippoRAG2Constructor (variant):
 
 ```python
 # gfmrag/graph_indexer.GraphIndexer.index_data(dataset_cfg)
-graph = graph_constructor.build_graph(root, data_name)        # → stage1 CSVs
-train_data = sft_constructor.prepare_data(root, data_name, "train.json")  # → stage1 JSON
-test_data  = sft_constructor.prepare_data(root, data_name, "test.json")
+graph = graph_constructor.build_graph(root, data_name)  # → stage1 CSVs
+train_data = sft_constructor.prepare_data(
+    root, data_name, "train.json"
+)  # → stage1 JSON
+test_data = sft_constructor.prepare_data(root, data_name, "test.json")
 ```
 
 ```python
 # gfmrag/gfmrag_retriever.GFMRetriever.from_index(...)
 # If stage1/ missing:
-graph_constructor.build_graph(data_dir, data_name)         # → stage1 CSVs
+graph_constructor.build_graph(data_dir, data_name)  # → stage1 CSVs
 # At inference time:
-ner_model(query)                    # NER
+ner_model(query)  # NER
 el_model(mentioned_entities, topk)  # EL → node mask
-text_emb_model.encode([query])      # query embedding
-graph_retriever(graph, input)       # GNN forward pass
+text_emb_model.encode([query])  # query embedding
+graph_retriever(graph, input)  # GNN forward pass
 ```
 
 ### State Transitions

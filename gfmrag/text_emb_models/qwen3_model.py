@@ -4,7 +4,14 @@ import requests
 import torch
 from openai import NOT_GIVEN, OpenAI
 from tqdm import tqdm
-from vllm import LLM, PoolingParams
+
+try:
+    from vllm import LLM, PoolingParams
+except ImportError:
+    raise ImportError(
+        "vllm is required for Qwen3TextEmbModel. "
+        "Install it with: pip install gfmrag[full] or uv sync --extra full"
+    ) from None
 
 from .base_model import BaseTextEmbModel
 

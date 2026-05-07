@@ -226,9 +226,9 @@ processed/stage2/{fingerprint}/
 ### Package-Level Exports (`__init__.py`)
 
 ```python
-from .gfmrag_retriever import GFMRetriever    # Main retrieval entrypoint
-from .graph_indexer import GraphIndexer        # Main indexing entrypoint
-from . import trainers                         # Training subpackage
+from .gfmrag_retriever import GFMRetriever  # Main retrieval entrypoint
+from .graph_indexer import GraphIndexer  # Main indexing entrypoint
+from . import trainers  # Training subpackage
 ```
 
 ### Internal Dependencies (Module → Module)
