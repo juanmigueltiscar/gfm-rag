@@ -3,7 +3,7 @@ import os
 
 import requests
 import torch
-import torch.nn.functional as F
+import torch.nn.functional as F  # noqa: N812
 from openai import OpenAI
 from tqdm import tqdm
 
@@ -152,6 +152,6 @@ class VLLMELModel(BaseELModel):
                     "score": score.item(),
                     "norm_score": score.item() / max_score,
                 }
-                for score, idx in zip(sorted_scores, sorted_indices)
+                for score, idx in zip(sorted_scores, sorted_indices, strict=False)
             ]
         return linked_entity_dict

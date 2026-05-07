@@ -424,6 +424,7 @@ class GraphIndexDataset:
                 valid_edges_df["u"].astype(int),
                 valid_edges_df["v"].astype(int),
                 valid_edges_df["r"].astype(int),
+                strict=False,
             )
         )
         # # Sort the edges by source and target for consistency
@@ -645,7 +646,7 @@ class GraphIndexDataset:
         ).with_format("torch")
 
         offset = 0
-        for raw_data_name, num_sample in zip(qa_data_names, num_samples):
+        for raw_data_name, num_sample in zip(qa_data_names, num_samples, strict=False):
             split = torch_data.Subset(dataset, range(offset, offset + num_sample))
             split_name = osp.basename(raw_data_name).split(".")[0]
             processed_split_path = osp.join(self.processed_dir, f"{split_name}.pt")

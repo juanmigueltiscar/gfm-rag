@@ -9,7 +9,9 @@ from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env", override=True)
 
-os.environ["HF_HOME"] = os.path.expanduser(os.environ.get("HF_HOME", "~/.hf_cache_user"))
+os.environ["HF_HOME"] = os.path.expanduser(
+    os.environ.get("HF_HOME", "~/.hf_cache_user")
+)
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(name)s | %(message)s")
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -73,11 +75,19 @@ def main() -> None:
     hf_token = os.getenv("HF_TOKEN")
 
     if not vllm_model:
-        logger.critical("VLLM_MODEL is not set in .env. Set it to the model name served by your vLLM server.")
+        logger.critical(
+            "VLLM_MODEL is not set in .env. Set it to the model name served by your vLLM server."
+        )
         return
 
     if not hf_token:
-        logger.critical("HF_TOKEN is not set in .env. It is required to download gated models from HuggingFace.")
+        logger.critical(
+            "HF_TOKEN is not set in .env. It is required to download gated models from HuggingFace."
+        )
+        return
+
+    if not vllm_url:
+        logger.critical("VLLM_BASE_URL is not set in .env.")
         return
 
     if not vllm_embed_url or not vllm_embed_model:
@@ -86,15 +96,21 @@ def main() -> None:
 
     logger.info("Checking vLLM LLM health at %s ...", vllm_url)
     if not check_vllm(vllm_url):
-        logger.critical("vLLM LLM server is not reachable. Start it first, e.g.:\n"
-                        "  vllm serve %s --port 8082", vllm_model)
+        logger.critical(
+            "vLLM LLM server is not reachable. Start it first, e.g.:\n"
+            "  vllm serve %s --port 8082",
+            vllm_model,
+        )
         return
     logger.info("vLLM LLM server is healthy")
 
     logger.info("Checking vLLM embed health at %s ...", vllm_embed_url)
     if not check_vllm(vllm_embed_url):
-        logger.critical("vLLM embed server is not reachable. Start it first, e.g.:\n"
-                        "  vllm serve %s --port 8000", vllm_embed_model)
+        logger.critical(
+            "vLLM embed server is not reachable. Start it first, e.g.:\n"
+            "  vllm serve %s --port 8000",
+            vllm_embed_model,
+        )
         return
     logger.info("vLLM embed server is healthy")
 
@@ -132,7 +148,9 @@ def main() -> None:
     )
     logger.info("OpenIE model ready")
 
-    logger.info("Initializing VLLMELModel for graph construction (%s)...", vllm_embed_model)
+    logger.info(
+        "Initializing VLLMELModel for graph construction (%s)...", vllm_embed_model
+    )
     el_for_graph = VLLMELModel(
         model_name=vllm_embed_model,
         api_base=vllm_embed_url,
@@ -151,7 +169,10 @@ def main() -> None:
     )
     logger.info("KGConstructor ready")
 
-    logger.info("Initializing VLLMELModel for query-time entity linking (%s)...", vllm_embed_model)
+    logger.info(
+        "Initializing VLLMELModel for query-time entity linking (%s)...",
+        vllm_embed_model,
+    )
     el_for_query = VLLMELModel(
         model_name=vllm_embed_model,
         api_base=vllm_embed_url,
@@ -173,7 +194,9 @@ def main() -> None:
         "truncate_dim": 1024,
     }
 
-    logger.info("Building GFMRetriever from index (this may take a while on first run)...")
+    logger.info(
+        "Building GFMRetriever from index (this may take a while on first run)..."
+    )
     retriever = GFMRetriever.from_index(
         data_dir=data_dir,
         data_name=data_name,
@@ -205,7 +228,7 @@ def main() -> None:
     logger.info("Running batch retrieval for %d queries", len(queries))
     batch_results = retriever.retrieve(queries, top_k=5, max_batch_size=2)
 
-    for idx, (q, res) in enumerate(zip(queries, batch_results)):
+    for idx, (q, res) in enumerate(zip(queries, batch_results, strict=False)):
         print(f"\n{sep}")
         print(f"Batch query #{idx + 1}: {q}")
         print(sep)

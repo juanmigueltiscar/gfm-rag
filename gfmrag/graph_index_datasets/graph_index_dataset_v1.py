@@ -208,6 +208,7 @@ class GraphIndexDatasetV1(GraphIndexDataset):
                 target_edges_df["u"].astype(int),
                 target_edges_df["v"].astype(int),
                 target_edges_df["r"].astype(int),
+                strict=False,
             )
         )
 

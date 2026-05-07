@@ -2,6 +2,7 @@ import ast
 import logging
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Any
 
 import pandas as pd
 import torch
@@ -106,7 +107,9 @@ class GFMRetriever:
                 graph_retriever_input, device=self.device
             )
 
-            pred = self.graph_retriever(self.graph, graph_retriever_input)  # 1 x num_nodes
+            pred = self.graph_retriever(
+                self.graph, graph_retriever_input
+            )  # 1 x num_nodes
 
             results: dict[str, list[dict]] = {}
             for target_type in target_types:
@@ -125,7 +128,7 @@ class GFMRetriever:
                         ],
                         "score": score.item(),
                     }
-                    for nid, score in zip(original_ids, topk.values)
+                    for nid, score in zip(original_ids, topk.values, strict=False)
                 ]
             return results
 
@@ -154,7 +157,7 @@ class GFMRetriever:
         queries: list[str],
         top_k: int,
         target_types: list[str],
-        query_utils: object,
+        query_utils: Any,
     ) -> list[dict[str, list[dict]]]:
         input_dict = self.prepare_batch_input(queries)
         input_dict = query_utils.cuda(input_dict, device=self.device)
@@ -177,7 +180,7 @@ class GFMRetriever:
                         ],
                         "score": score.item(),
                     }
-                    for nid, score in zip(original_ids, topk.values)
+                    for nid, score in zip(original_ids, topk.values, strict=False)
                 ]
             results.append(query_results)
         return results
@@ -235,7 +238,7 @@ class GFMRetriever:
         return graph_retriever_input
 
     def _ner_batch(self, queries: list[str]) -> list[list[str]]:
-        results: list[list[str]] = [None] * len(queries)  # type: ignore[assignment]
+        results: list[list[str]] = [None] * len(queries)  # type: ignore[list-item]
         with ThreadPoolExecutor(max_workers=len(queries)) as pool:
             futures = {pool.submit(self.ner_model, q): i for i, q in enumerate(queries)}
             for future in as_completed(futures):

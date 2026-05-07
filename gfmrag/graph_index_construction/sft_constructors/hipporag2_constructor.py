@@ -9,7 +9,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import torch
-import torch.nn.functional as F
+import torch.nn.functional as F  # noqa: N812
 
 from gfmrag.graph_index_datasets.graph_index_dataset import GraphIndexDataset
 from gfmrag.text_emb_models import BaseTextEmbModel
@@ -231,7 +231,9 @@ class HippoRAG2Constructor(BaseSFTConstructor):
 
         valid_pairs = [
             (int(local_id), float(score))
-            for local_id, score in zip(local_ids_1d.tolist(), scores_1d.tolist())
+            for local_id, score in zip(
+                local_ids_1d.tolist(), scores_1d.tolist(), strict=False
+            )
             if local_id >= 0
         ]
         if not valid_pairs:
@@ -269,7 +271,7 @@ class HippoRAG2Constructor(BaseSFTConstructor):
 
         valid_pairs = [
             (int(fact_id), float(score))
-            for fact_id, score in zip(ids_1d.tolist(), scores_1d.tolist())
+            for fact_id, score in zip(ids_1d.tolist(), scores_1d.tolist(), strict=False)
             if fact_id >= 0
         ]
         if not valid_pairs:
@@ -282,7 +284,9 @@ class HippoRAG2Constructor(BaseSFTConstructor):
         )
         score_map = {
             fact_id: float(score)
-            for fact_id, score in zip(candidate_indices, normalized_scores.tolist())
+            for fact_id, score in zip(
+                candidate_indices, normalized_scores.tolist(), strict=False
+            )
         }
         return candidate_indices, candidate_facts, score_map
 

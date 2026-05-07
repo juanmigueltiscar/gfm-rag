@@ -377,7 +377,9 @@ class SFTTrainer(BaseTrainer):
                         [
                             (test_dataset.data.id2node[node_id.item()], score.item())
                             for node_id, score in zip(
-                                original_node_ids[batch_idx], top_k_scores[batch_idx]
+                                original_node_ids[batch_idx],
+                                top_k_scores[batch_idx],
+                                strict=False,
                             )
                         ]
                         for batch_idx in range(len(original_node_ids))

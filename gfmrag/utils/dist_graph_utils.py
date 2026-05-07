@@ -40,7 +40,7 @@ def partition_graph_metis(graph: Data, rank: int, world_size: int) -> Data:
     # --- METIS partitioning (rank 0 computes, broadcasts to all) ---
     def _compute_metis() -> list[int]:
         adjacency: list[list[int]] = [[] for _ in range(num_nodes)]
-        for s, d in zip(src.tolist(), dst.tolist()):
+        for s, d in zip(src.tolist(), dst.tolist(), strict=False):
             adjacency[s].append(d)
             adjacency[d].append(s)
         adjacency = [list(set(neighbors)) for neighbors in adjacency]

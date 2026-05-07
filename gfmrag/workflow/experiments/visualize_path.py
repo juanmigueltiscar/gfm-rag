@@ -114,7 +114,7 @@ def main(cfg: DictConfig) -> None:
                 )
                 + "\n"
             )
-            for path, weight in zip(paths, weights):
+            for path, weight in zip(paths, weights, strict=False):
                 path_str_list = []
                 for h, t, r in path:
                     h_type = node_type_names[node_types[h].item()]

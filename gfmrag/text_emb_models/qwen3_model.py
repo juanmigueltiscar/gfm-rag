@@ -1,4 +1,5 @@
 import os
+from typing import Any
 
 import requests
 import torch
@@ -104,7 +105,7 @@ class Qwen3TextEmbModel(BaseTextEmbModel):
         except requests.RequestException:
             return False
 
-    def _start_vllm_server(self):
+    def _start_vllm_server(self) -> Any:
         """Start a vLLM server for embedding generation."""
         try:
             from vllm import LLM, PoolingParams  # noqa: F401

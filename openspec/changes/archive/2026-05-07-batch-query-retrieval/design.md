@@ -26,7 +26,7 @@ Un solo método con type-based dispatch. Si `isinstance(query, str)`, se comport
 
 **Alternativa descartada**: método separado `retrieve_batch()`. Duplica lógica de post-procesado (top-k por target_type, construcción de dicts de resultado) y fuerza al caller a elegir entre dos métodos.
 
-```python
+```
 def retrieve(
     self,
     query: str | list[str],
@@ -82,7 +82,7 @@ El modelo maneja boundary condition cero de forma natural: en `GNNRetriever.get_
 
 `max_batch_size` se almacena como atributo de instancia en `__init__` (default 4). `from_index()` lo acepta y lo propaga. `retrieve()` acepta un override opcional. Si el caller no pasa el parámetro en `retrieve()`, se usa el valor de la instancia.
 
-```python
+```
 class GFMRetriever:
     def __init__(self, ..., max_batch_size: int = 4):
         ...

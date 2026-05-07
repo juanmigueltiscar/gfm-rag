@@ -87,7 +87,7 @@ def metis_partition(
     dst = edge_index[0].numpy()
 
     adjacency: list[list[int]] = [[] for _ in range(num_nodes)]
-    for s, d in zip(src, dst):
+    for s, d in zip(src, dst, strict=False):
         adjacency[s].append(d)
         adjacency[d].append(s)
 

@@ -67,7 +67,9 @@ class FakePLAIDIndex:
         documents_ids: list[str],
         documents_embeddings: list[np.ndarray],
     ) -> None:
-        _plaid_store[self.key] = list(zip(documents_ids, documents_embeddings))
+        _plaid_store[self.key] = list(
+            zip(documents_ids, documents_embeddings, strict=False)
+        )
 
 
 class FakeRetrievalHit(TypedDict):

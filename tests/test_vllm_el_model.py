@@ -2,6 +2,7 @@ import hashlib
 import os
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -36,7 +37,7 @@ def _patch_health_ok(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-def _make_model(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, **kwargs):
+def _make_model(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, **kwargs: Any) -> Any:
     _patch_health_ok(monkeypatch)
     from gfmrag.graph_index_construction.entity_linking_model.vllm_el_model import (
         VLLMELModel,
@@ -44,9 +45,11 @@ def _make_model(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, **kwargs):
 
     with patch(
         "gfmrag.graph_index_construction.entity_linking_model.vllm_el_model.OpenAI"
-    ) as MockOpenAI:
-        client = MockOpenAI.return_value
-        client.embeddings.create.side_effect = lambda model, input, **kw: _make_embedding_response(input)
+    ) as mock_open_ai:
+        client = mock_open_ai.return_value
+        client.embeddings.create.side_effect = (
+            lambda model, input, **kw: _make_embedding_response(input)
+        )
         kw = {"normalize": False, **kwargs}
         model = VLLMELModel(
             model_name="test-model",
@@ -69,7 +72,9 @@ def test_init_ok(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     assert model.client is not None
 
 
-def test_init_server_unavailable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_init_server_unavailable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     import requests as _requests
 
     monkeypatch.setattr(
@@ -111,7 +116,9 @@ def test_index_saves_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
     assert os.path.exists(cache_file)
 
 
-def test_index_loads_from_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_index_loads_from_cache(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     model = _make_model(tmp_path, monkeypatch, use_cache=True)
     model.index(ENTITY_LIST)
     call_count_after_first = model.client.embeddings.create.call_count
@@ -177,7 +184,9 @@ def test_call_top_result_is_paris(
 # ---------------------------------------------------------------------------
 
 
-def test_call_empty_entity_index(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_call_empty_entity_index(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     model = _make_model(tmp_path, monkeypatch, use_cache=False)
     model.index([])
     assert model.entity_embeddings.shape == (0, 0)

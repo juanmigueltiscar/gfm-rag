@@ -155,7 +155,7 @@ class DPRELModel(BaseELModel):
             sorted_indices = top_k_values[i]
             max_score = sorted_score[0].item()
 
-            for score, top_k_index in zip(sorted_score, sorted_indices):
+            for score, top_k_index in zip(sorted_score, sorted_indices, strict=False):
                 linked_entity_dict[ner_entity_list[i]].append(
                     {
                         "entity": self.entity_list[top_k_index],

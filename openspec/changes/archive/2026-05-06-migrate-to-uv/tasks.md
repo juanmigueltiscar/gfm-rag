@@ -20,4 +20,3 @@
 - [x] 4.1 Actualizar `AGENTS.md`: `poetry install` → `uv sync`, `poetry run` → `uv run`
 - [x] 4.2 Actualizar `docs/install.md`: reemplazar `poetry install` con `uv sync`, actualizar tabla de requisitos
 - [x] 4.3 Actualizar `docs/DEVELOPING.md`: reemplazar Poetry por uv en tabla de requisitos, comandos de setup y build
-
