@@ -1,0 +1,10 @@
+_target_: gfmrag.graph_index_construction.entity_linking_model.VLLMELModel
+model_name: nvidia/llama-nemotron-embed-1b-v2
+api_base: http://localhost:8000/v1
+api_key: EMPTY
+root: tmp
+use_cache: true
+normalize: true
+batch_size: 32
+query_instruct: null
+passage_instruct: null
