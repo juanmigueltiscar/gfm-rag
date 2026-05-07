@@ -283,6 +283,252 @@ def test_from_index_restores_dataset_class_from_dataset_config(tmp_path: Any) ->
     el_model.index.assert_called_once()
 
 
+def test_retrieve_batch_single_query_unchanged(retriever: Any) -> None:
+    result = retriever.retrieve("test query", top_k=2)
+    assert isinstance(result, dict)
+    assert "document" in result
+    docs = result["document"]
+    assert len(docs) == 2
+    assert docs[0]["id"] == "DocA"
+    assert docs[0]["score"] == pytest.approx(0.9, abs=1e-4)
+
+
+def test_retrieve_batch_two_queries(
+    mock_qa_data: Any, mock_node_info: Any, mock_graph: Any
+) -> None:
+    from gfmrag.gfmrag_retriever import GFMRetriever
+
+    ner_model = MagicMock()
+    ner_model.side_effect = [["DocA"], ["DocB"]]
+
+    el_model = MagicMock()
+    el_model.return_value = {
+        "DocA": [{"entity": "DocA", "score": 1.0}],
+        "DocB": [{"entity": "DocB", "score": 1.0}],
+    }
+
+    text_emb_model = MagicMock()
+    text_emb_model.encode.return_value = torch.zeros(2, 128)
+
+    graph_retriever = MagicMock()
+    graph_retriever.return_value = torch.tensor(
+        [[0.9, 0.1, 0.0, 0.0], [0.2, 0.8, 0.0, 0.0]]
+    )
+
+    ret = GFMRetriever(
+        qa_data=mock_qa_data,
+        text_emb_model=text_emb_model,
+        ner_model=ner_model,
+        el_model=el_model,
+        graph_retriever=graph_retriever,
+        node_info=mock_node_info,
+        device=torch.device("cpu"),
+    )
+
+    result = ret.retrieve(["Q1", "Q2"], top_k=2)
+
+    assert isinstance(result, list)
+    assert len(result) == 2
+    assert "document" in result[0]
+    assert "document" in result[1]
+    assert result[0]["document"][0]["id"] == "DocA"
+    assert result[1]["document"][0]["id"] == "DocB"
+
+
+def test_retrieve_batch_entity_dedup(
+    mock_qa_data: Any, mock_node_info: Any, mock_graph: Any
+) -> None:
+    from gfmrag.gfmrag_retriever import GFMRetriever
+
+    ner_model = MagicMock()
+    ner_model.side_effect = [["France"], ["France"]]
+
+    el_model = MagicMock()
+    el_model.return_value = {"France": [{"entity": "France", "score": 1.0}]}
+
+    text_emb_model = MagicMock()
+    text_emb_model.encode.return_value = torch.zeros(2, 128)
+
+    graph_retriever = MagicMock()
+    graph_retriever.return_value = torch.zeros(2, 4)
+
+    ret = GFMRetriever(
+        qa_data=mock_qa_data,
+        text_emb_model=text_emb_model,
+        ner_model=ner_model,
+        el_model=el_model,
+        graph_retriever=graph_retriever,
+        node_info=mock_node_info,
+        device=torch.device("cpu"),
+    )
+
+    ret.retrieve(["Q1", "Q2"], top_k=2)
+
+    el_model.assert_called_once_with(["France"], topk=1)
+
+
+def test_retrieve_batch_empty_ner(
+    mock_qa_data: Any, mock_node_info: Any, mock_graph: Any
+) -> None:
+    from gfmrag.gfmrag_retriever import GFMRetriever
+
+    ner_model = MagicMock()
+    ner_model.side_effect = [[], ["DocA"]]
+
+    el_model = MagicMock()
+    el_model.return_value = {"DocA": [{"entity": "DocA", "score": 1.0}]}
+
+    text_emb_model = MagicMock()
+    text_emb_model.encode.return_value = torch.zeros(2, 128)
+
+    graph_retriever = MagicMock()
+    graph_retriever.return_value = torch.zeros(2, 4)
+
+    ret = GFMRetriever(
+        qa_data=mock_qa_data,
+        text_emb_model=text_emb_model,
+        ner_model=ner_model,
+        el_model=el_model,
+        graph_retriever=graph_retriever,
+        node_info=mock_node_info,
+        device=torch.device("cpu"),
+    )
+
+    result = ret.retrieve(["Q1", "Q2"], top_k=2)
+
+    el_model.assert_called_once_with(["DocA"], topk=1)
+    assert isinstance(result, list)
+    assert len(result) == 2
+    assert "document" in result[0]
+    assert "document" in result[1]
+
+
+def test_retrieve_batch_chunking(
+    mock_qa_data: Any, mock_node_info: Any, mock_graph: Any
+) -> None:
+    from gfmrag.gfmrag_retriever import GFMRetriever
+
+    queries = ["Q1", "Q2", "Q3", "Q4", "Q5"]
+
+    ner_model = MagicMock()
+    ner_model.side_effect = [["DocA"]] * 5
+
+    el_model = MagicMock()
+    el_model.return_value = {"DocA": [{"entity": "DocA", "score": 1.0}]}
+
+    text_emb_model = MagicMock()
+    text_emb_model.encode.side_effect = lambda queries, **kwargs: torch.zeros(
+        len(queries), 128
+    )
+
+    graph_retriever = MagicMock()
+
+    def mock_forward(graph: Any, input_dict: dict) -> torch.Tensor:
+        bs = input_dict["question_embeddings"].size(0)
+        return torch.zeros(bs, 4)
+
+    graph_retriever.side_effect = mock_forward
+
+    ret = GFMRetriever(
+        qa_data=mock_qa_data,
+        text_emb_model=text_emb_model,
+        ner_model=ner_model,
+        el_model=el_model,
+        graph_retriever=graph_retriever,
+        node_info=mock_node_info,
+        device=torch.device("cpu"),
+    )
+
+    result = ret.retrieve(queries, top_k=2, max_batch_size=2)
+
+    assert graph_retriever.call_count == 3
+    assert len(result) == 5
+
+
+def test_max_batch_size_from_init(
+    mock_qa_data: Any, mock_node_info: Any, mock_graph: Any
+) -> None:
+    from gfmrag.gfmrag_retriever import GFMRetriever
+
+    queries = ["Q1", "Q2", "Q3", "Q4", "Q5"]
+
+    ner_model = MagicMock()
+    ner_model.side_effect = [["DocA"]] * 5
+
+    el_model = MagicMock()
+    el_model.return_value = {"DocA": [{"entity": "DocA", "score": 1.0}]}
+
+    text_emb_model = MagicMock()
+    text_emb_model.encode.side_effect = lambda queries, **kwargs: torch.zeros(
+        len(queries), 128
+    )
+
+    graph_retriever = MagicMock()
+
+    def mock_forward(graph: Any, input_dict: dict) -> torch.Tensor:
+        bs = input_dict["question_embeddings"].size(0)
+        return torch.zeros(bs, 4)
+
+    graph_retriever.side_effect = mock_forward
+
+    ret = GFMRetriever(
+        qa_data=mock_qa_data,
+        text_emb_model=text_emb_model,
+        ner_model=ner_model,
+        el_model=el_model,
+        graph_retriever=graph_retriever,
+        node_info=mock_node_info,
+        device=torch.device("cpu"),
+        max_batch_size=3,
+    )
+
+    ret.retrieve(queries, top_k=2)
+
+    assert graph_retriever.call_count == 2
+
+
+def test_max_batch_size_override(
+    mock_qa_data: Any, mock_node_info: Any, mock_graph: Any
+) -> None:
+    from gfmrag.gfmrag_retriever import GFMRetriever
+
+    queries = ["Q1", "Q2", "Q3", "Q4", "Q5"]
+
+    ner_model = MagicMock()
+    ner_model.side_effect = [["DocA"]] * 5
+
+    el_model = MagicMock()
+    el_model.return_value = {"DocA": [{"entity": "DocA", "score": 1.0}]}
+
+    text_emb_model = MagicMock()
+    text_emb_model.encode.side_effect = lambda queries, **kwargs: torch.zeros(
+        len(queries), 128
+    )
+
+    graph_retriever = MagicMock()
+
+    def mock_forward(graph: Any, input_dict: dict) -> torch.Tensor:
+        bs = input_dict["question_embeddings"].size(0)
+        return torch.zeros(bs, 4)
+
+    graph_retriever.side_effect = mock_forward
+
+    ret = GFMRetriever(
+        qa_data=mock_qa_data,
+        text_emb_model=text_emb_model,
+        ner_model=ner_model,
+        el_model=el_model,
+        graph_retriever=graph_retriever,
+        node_info=mock_node_info,
+        device=torch.device("cpu"),
+        max_batch_size=8,
+    )
+
+    ret.retrieve(queries, top_k=2, max_batch_size=2)
+
+    assert graph_retriever.call_count == 3
+
+
 def test_from_index_calls_graph_constructor_when_no_stage1(tmp_path: Any) -> None:
     from unittest.mock import patch
 

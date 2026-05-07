@@ -3,9 +3,10 @@
 ## Setup & dev commands
 
 ```bash
-# Install (requires CUDA 12+, Python 3.12)
+# Install (requires CUDA 12+, Python 3.12; torch >=2.9.0 for CUDA on aarch64)
 uv sync
 uv sync --group tests   # installs test dependencies (pandas, datasets, einops)
+uv sync --group vllm    # optional: installs vllm for Qwen3TextEmbModel
 pre-commit install
 
 # Run all quality checks (equiv to CI)
@@ -27,6 +28,8 @@ uv run python -m pytest tests/test_gfmrag_retriever.py -k test_retrieve_top_k
   - `GFMRetriever.from_index()` — end-to-end retrieval (`gfmrag.gfmrag_retriever`)
   - `GraphIndexer.index_data()` — batch dataset indexing (`gfmrag.graph_indexer`)
   - `gfmrag.workflow.*` modules — training / QA / IRCoT scripts launched via `python -m` or `torchrun`
+- **Batch retrieval**: `GFMRetriever.retrieve(query)` accepts `str | list[str]`. Pass a list to run NER in parallel and forward the GNN in a single batched pass. `max_batch_size` (default 4) controls GPU chunk size — set at `__init__`/`from_index()` or override per call.
+- **Entity linking models**: `DPRELModel`, `NVEmbedV2ELModel`, `ColbertELModel`, and `VLLMELModel` (remote vLLM server via OpenAI-compatible `/v1/embeddings`). Configure via Hydra `el_model/vllm_el_model.yaml`.
 
 ## Data pipeline (three-stage)
 
@@ -52,6 +55,8 @@ raw/documents.json  -->  processed/stage1/  -->  processed/stage2/{fingerprint}/
 - Requires env vars: `OPENAI_API_KEY` (for LLM calls), `HF_TOKEN` (for gated HuggingFace models). Copy `.env.example`.
 - `python-dotenv` is a dependency — `.env` is gitignored.
 - CUDA toolkit is a **build-time** dependency (compiles `rspmm` extension).
+- `vllm` is **optional** — only needed for `Qwen3TextEmbModel`. Install with `uv sync --group vllm`. Importing `Qwen3TextEmbModel` without vllm raises a descriptive `ImportError`.
+- `faiss` has been **removed** — vector search uses `torch` ops directly (`IndexFlatIP` equivalent). `torch >=2.9.0` is required (enables CUDA on aarch64).
 
 ## Repository Map
 
