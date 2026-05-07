@@ -1,6 +1,7 @@
 import ast
 import logging
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pandas as pd
 import torch
@@ -57,6 +58,7 @@ class GFMRetriever:
         graph_retriever: BaseGNNModel,
         node_info: pd.DataFrame,
         device: torch.device,
+        max_batch_size: int = 4,
     ) -> None:
         self.qa_data = qa_data
         self.graph = qa_data.graph
@@ -66,26 +68,30 @@ class GFMRetriever:
         self.graph_retriever = graph_retriever
         self.node_info = node_info
         self.device = device
+        self.max_batch_size = max_batch_size
         self.num_nodes = self.graph.num_nodes
 
     @torch.no_grad()
     def retrieve(
         self,
-        query: str,
+        query: str | list[str],
         top_k: int,
         target_types: list[str] | None = None,
-    ) -> dict[str, list[dict]]:
+        max_batch_size: int | None = None,
+    ) -> dict[str, list[dict]] | list[dict[str, list[dict]]]:
         """Retrieve nodes from the graph based on the given query.
 
         Args:
-            query (str): Input query text.
+            query (str | list[str]): Input query text or list of queries.
             top_k (int): Number of results to return per target type.
             target_types (list[str] | None): Node types to retrieve. Each type must exist
                 in graph.nodes_by_type. Defaults to ["document"].
+            max_batch_size (int | None): Override the instance max_batch_size for
+                this call. Only used when query is a list.
 
         Returns:
-            dict[str, list[dict]]: Results keyed by target type. Each entry contains
-                dicts with keys: id, type, attributes, score.
+            dict[str, list[dict]] when query is str (one result per target type).
+            list[dict[str, list[dict]]] when query is list[str] (one result per query).
         """
         if target_types is None:
             target_types = ["document"]
@@ -94,32 +100,86 @@ class GFMRetriever:
             query_utils,  # deferred to avoid circular import at module load
         )
 
-        graph_retriever_input = self.prepare_input_for_graph_retriever(query)
-        graph_retriever_input = query_utils.cuda(
-            graph_retriever_input, device=self.device
-        )
+        if isinstance(query, str):
+            graph_retriever_input = self.prepare_input_for_graph_retriever(query)
+            graph_retriever_input = query_utils.cuda(
+                graph_retriever_input, device=self.device
+            )
 
-        pred = self.graph_retriever(self.graph, graph_retriever_input)  # 1 x num_nodes
+            pred = self.graph_retriever(self.graph, graph_retriever_input)  # 1 x num_nodes
 
-        results: dict[str, list[dict]] = {}
-        for target_type in target_types:
-            node_ids = self.graph.nodes_by_type[
-                target_type
-            ]  # raises KeyError if missing
-            type_pred = pred[:, node_ids].squeeze(0)
-            topk = torch.topk(type_pred, k=min(top_k, len(node_ids)))
-            original_ids = node_ids[topk.indices]
-            results[target_type] = [
-                {
-                    "id": self.qa_data.id2node[nid.item()],
-                    "type": target_type,
-                    "attributes": self.node_info.loc[
-                        self.qa_data.id2node[nid.item()], "attributes"
-                    ],
-                    "score": score.item(),
-                }
-                for nid, score in zip(original_ids, topk.values)
-            ]
+            results: dict[str, list[dict]] = {}
+            for target_type in target_types:
+                node_ids = self.graph.nodes_by_type[
+                    target_type
+                ]  # raises KeyError if missing
+                type_pred = pred[:, node_ids].squeeze(0)
+                topk = torch.topk(type_pred, k=min(top_k, len(node_ids)))
+                original_ids = node_ids[topk.indices]
+                results[target_type] = [
+                    {
+                        "id": self.qa_data.id2node[nid.item()],
+                        "type": target_type,
+                        "attributes": self.node_info.loc[
+                            self.qa_data.id2node[nid.item()], "attributes"
+                        ],
+                        "score": score.item(),
+                    }
+                    for nid, score in zip(original_ids, topk.values)
+                ]
+            return results
+
+        if max_batch_size is None:
+            max_batch_size = self.max_batch_size
+
+        all_results = []
+        num_chunks = (len(query) + max_batch_size - 1) // max_batch_size
+        for i in range(0, len(query), max_batch_size):
+            chunk = query[i : i + max_batch_size]
+            chunk_idx = i // max_batch_size + 1
+            logger.debug(
+                "Processing chunk %d/%d (%d queries)",
+                chunk_idx,
+                num_chunks,
+                len(chunk),
+            )
+            chunk_results = self._retrieve_chunk(
+                chunk, top_k, target_types, query_utils
+            )
+            all_results.extend(chunk_results)
+        return all_results
+
+    def _retrieve_chunk(
+        self,
+        queries: list[str],
+        top_k: int,
+        target_types: list[str],
+        query_utils: object,
+    ) -> list[dict[str, list[dict]]]:
+        input_dict = self.prepare_batch_input(queries)
+        input_dict = query_utils.cuda(input_dict, device=self.device)
+        pred = self.graph_retriever(self.graph, input_dict)  # (bs, num_nodes)
+
+        results: list[dict[str, list[dict]]] = []
+        for q_idx in range(pred.size(0)):
+            query_results: dict[str, list[dict]] = {}
+            for target_type in target_types:
+                node_ids = self.graph.nodes_by_type[target_type]
+                type_pred = pred[q_idx, node_ids]
+                topk = torch.topk(type_pred, k=min(top_k, len(node_ids)))
+                original_ids = node_ids[topk.indices]
+                query_results[target_type] = [
+                    {
+                        "id": self.qa_data.id2node[nid.item()],
+                        "type": target_type,
+                        "attributes": self.node_info.loc[
+                            self.qa_data.id2node[nid.item()], "attributes"
+                        ],
+                        "score": score.item(),
+                    }
+                    for nid, score in zip(original_ids, topk.values)
+                ]
+            results.append(query_results)
         return results
 
     def prepare_input_for_graph_retriever(self, query: str) -> dict:
@@ -174,6 +234,51 @@ class GFMRetriever:
         }
         return graph_retriever_input
 
+    def _ner_batch(self, queries: list[str]) -> list[list[str]]:
+        results: list[list[str]] = [None] * len(queries)  # type: ignore[assignment]
+        with ThreadPoolExecutor(max_workers=len(queries)) as pool:
+            futures = {pool.submit(self.ner_model, q): i for i, q in enumerate(queries)}
+            for future in as_completed(futures):
+                results[futures[future]] = future.result()
+        return results
+
+    def prepare_batch_input(self, queries: list[str]) -> dict:
+        all_mentions = self._ner_batch(queries)
+
+        unique_mentions: set[str] = set()
+        for mentions in all_mentions:
+            unique_mentions.update(mentions)
+
+        if unique_mentions:
+            linked_entities = self.el_model(list(unique_mentions), topk=1)
+        else:
+            linked_entities = {}
+
+        masks = []
+        for mentions in all_mentions:
+            if len(mentions) == 0:
+                mask = torch.zeros(self.num_nodes)
+            else:
+                entity_ids = [
+                    self.qa_data.node2id[linked_entities[ent][0]["entity"]]
+                    for ent in mentions
+                    if ent in linked_entities
+                    and linked_entities[ent][0]["entity"] in self.qa_data.node2id
+                ]
+                mask = entities_to_mask(entity_ids, self.num_nodes)
+            masks.append(mask)
+
+        start_nodes_mask = torch.stack(masks).to(self.device)
+
+        question_embeddings = self.text_emb_model.encode(
+            queries, is_query=True, show_progress_bar=False
+        )
+
+        return {
+            "question_embeddings": question_embeddings,
+            "start_nodes_mask": start_nodes_mask,
+        }
+
     @staticmethod
     def _load_qa_data_from_model_config(
         data_dir: str,
@@ -212,6 +317,8 @@ class GFMRetriever:
         el_model: BaseELModel,
         graph_constructor: BaseGraphConstructor | None = None,
         force_reindex: bool = False,
+        text_emb_model_cfgs: dict | None = None,
+        max_batch_size: int = 4,
     ) -> "GFMRetriever":
         """Construct a GFMRetriever from a data directory.
 
@@ -228,6 +335,11 @@ class GFMRetriever:
             el_model: Instantiated EL model. index() is called internally.
             graph_constructor: Required only when stage1/ does not exist.
             force_reindex: Force rebuild of stage2 processed files.
+            text_emb_model_cfgs: Optional override for the text embedding model
+                config stored in the pretrained model checkpoint. Useful when the
+                checkpoint targets a local vLLM server but you want to use a remote
+                one (e.g. on ARM where vllm is not installable).
+            max_batch_size: Maximum batch size for batched queries (default 4).
 
         Returns:
             Fully initialized GFMRetriever.
@@ -268,6 +380,9 @@ class GFMRetriever:
         graph_retriever, model_config = utils.load_model_from_pretrained(model_path)
         graph_retriever.eval()
 
+        if text_emb_model_cfgs is not None:
+            model_config["dataset_config"]["text_emb_model_cfgs"] = text_emb_model_cfgs
+
         qa_data = GFMRetriever._load_qa_data_from_model_config(
             data_dir=data_dir,
             data_name=data_name,
@@ -299,4 +414,5 @@ class GFMRetriever:
             graph_retriever=graph_retriever,
             node_info=nodes_df,
             device=device,
+            max_batch_size=max_batch_size,
         )
