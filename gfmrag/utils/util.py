@@ -45,6 +45,32 @@ def load_model_from_pretrained(path: str) -> tuple[torch.nn.Module, dict]:
     return model, config
 
 
+def load_pretrained_weights(
+    model: torch.nn.Module, path: str
+) -> tuple[list[str], list[str]]:
+    """Load pretrained weights onto an existing model using strict=False.
+
+    Layers with matching shapes load from the checkpoint; layers with shape
+    mismatches (e.g. the input projection when changing embedding dimension)
+    are left with their random initialization.
+
+    Returns:
+        (missing_keys, unexpected_keys) from load_state_dict.
+    """
+    model_path = cached_file(path, "model.pth")
+    if model_path is None:
+        raise FileNotFoundError(f"model.pth not found in {path}")
+    state = torch.load(model_path, map_location="cpu", weights_only=True)
+    model_state = model.state_dict()
+    compatible = {
+        k: v
+        for k, v in state["model"].items()
+        if k in model_state and v.shape == model_state[k].shape
+    }
+    missing, unexpected = model.load_state_dict(compatible, strict=False)
+    return missing, unexpected
+
+
 def init_multi_dataset(cfg: DictConfig, world_size: int, rank: int) -> list:
     """
     Pre-rocess the dataset in each rank

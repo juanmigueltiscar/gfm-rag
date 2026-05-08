@@ -17,18 +17,18 @@ logger = logging.getLogger(__name__)
 logging.getLogger("openai").setLevel(logging.ERROR)
 logging.getLogger("httpx").setLevel(logging.ERROR)
 
-query_prompt_one_shot_input = """Please extract all named entities that are important for solving the questions below.
-Place the named entities in json format.
+query_prompt_one_shot_input = """Por favor, extrae todas las entidades nombradas que son importantes para responder las preguntas siguientes.
+Coloca las entidades nombradas en formato json.
 
-Question: Which magazine was started first Arthur's Magazine or First for Women?
+Pregunta: ¿Qué empresa adoptó antes la impresión inkjet para decoración cerámica, Keraben o Porcelanosa?
 
 """
 query_prompt_one_shot_output = """
-{"named_entities": ["First for Women", "Arthur's Magazine"]}
+{"named_entities": ["impresión inkjet", "decoración cerámica", "Keraben", "Porcelanosa"]}
 """
 
 query_prompt_template = """
-Question: {}
+Pregunta: {}
 
 """
 

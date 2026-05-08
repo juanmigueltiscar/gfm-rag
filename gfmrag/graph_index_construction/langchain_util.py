@@ -26,6 +26,8 @@ def init_langchain_model(
         # https://python.langchain.com/v0.1/docs/integrations/chat/openai/
 
         assert model_name.startswith("gpt-")
+        kwargs.pop("api_key", None)   # avoid duplicate keyword when forwarded from NER/OpenIE models
+        kwargs.pop("base_url", None)  # not used for openai provider
         return ChatOpenAI(
             api_key=os.environ.get("OPENAI_API_KEY"),
             model=model_name,
@@ -88,7 +90,7 @@ def init_langchain_model(
         # vLLM server with OpenAI-compatible API
         return ChatOpenAI(
             openai_api_base=kwargs.pop("base_url", None),
-            openai_api_key=kwargs.pop("api_key", "EMPTY"),
+            openai_api_key=kwargs.pop("api_key", None) or "EMPTY",
             model=model_name,
             temperature=temperature,
             max_retries=max_retries,

@@ -7,6 +7,7 @@ from omegaconf import DictConfig
 
 from gfmrag.graph_index_construction.graph_constructors import BaseGraphConstructor
 from gfmrag.graph_index_construction.sft_constructors import BaseSFTConstructor
+from gfmrag.graph_index_construction.utils import processing_phrases
 from gfmrag.graph_index_datasets.graph_index_dataset import GraphIndexDataset
 from gfmrag.utils import check_all_files_exist
 
@@ -39,6 +40,40 @@ class GraphIndexer:
         """
         self.graph_constructor = graph_constructor
         self.sft_constructor = sft_constructor
+
+    @staticmethod
+    def _has_entity_annotations(raw_path: str) -> bool:
+        """Return True if the QA file has pre-annotated question/supporting entities."""
+        with open(raw_path) as f:
+            data = json.load(f)
+        if not data:
+            return False
+        return "question_entities" in data[0] and "supporting_entities" in data[0]
+
+    @staticmethod
+    def _fast_migrate_qa(raw_path: str, out_path: str) -> None:
+        """Convert a raw QA file with entity annotations directly to processed format."""
+        with open(raw_path) as f:
+            data = json.load(f)
+        processed = []
+        for sample in data:
+            target_docs = sample.get("supporting_documents", sample.get("supporting_facts", []))
+            processed.append({
+                **sample,
+                "supporting_documents": target_docs,
+                "start_type": ["entity"],
+                "target_type": ["entity", "document"],
+                "start_nodes": {
+                    "entity": [processing_phrases(e) for e in sample.get("question_entities", [])],
+                },
+                "target_nodes": {
+                    "entity": [processing_phrases(e) for e in sample.get("supporting_entities", [])],
+                    "document": target_docs,
+                },
+            })
+        with open(out_path, "w") as f:
+            json.dump(processed, f, indent=4)
+        logger.info(f"Fast migration complete: {len(processed)} samples → {out_path}")
 
     def index_data(self, dataset_cfg: DictConfig) -> None:
         """Index and process dataset by creating graph indices and preparing SFT data.
@@ -112,20 +147,22 @@ class GraphIndexer:
             )
 
         # Try to prepare training and testing data from dataset
-        if os.path.exists(os.path.join(raw_data_dir, "train.json")) and (
-            not os.path.exists(os.path.join(prosessed_data_dir, "train.json")) or force
-        ):
-            logger.info(f"Preparing {os.path.join(raw_data_dir, 'train.json')}")
-            train_data = self.sft_constructor.prepare_data(
-                root, data_name, "train.json"
-            )
-            with open(os.path.join(prosessed_data_dir, "train.json"), "w") as f:
-                json.dump(train_data, f, indent=4)
+        for split in ("train.json", "test.json"):
+            raw_qa_path = os.path.join(raw_data_dir, split)
+            out_qa_path = os.path.join(prosessed_data_dir, split)
 
-        if os.path.exists(os.path.join(raw_data_dir, "test.json")) and (
-            not os.path.exists(os.path.join(prosessed_data_dir, "test.json")) or force
-        ):
-            logger.info(f"Preparing {os.path.join(raw_data_dir, 'test.json')}")
-            test_data = self.sft_constructor.prepare_data(root, data_name, "test.json")
-            with open(os.path.join(prosessed_data_dir, "test.json"), "w") as f:
-                json.dump(test_data, f, indent=4)
+            if not os.path.exists(raw_qa_path):
+                continue
+            if os.path.exists(out_qa_path) and not force:
+                continue
+
+            if self._has_entity_annotations(raw_qa_path):
+                logger.info(
+                    f"Entity annotations detected in {split} — fast migration (no embedding/LLM)"
+                )
+                self._fast_migrate_qa(raw_qa_path, out_qa_path)
+            else:
+                logger.info(f"Preparing {raw_qa_path}")
+                data = self.sft_constructor.prepare_data(root, data_name, split)
+                with open(out_qa_path, "w") as f:
+                    json.dump(data, f, indent=4)

@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn.functional as F  # noqa: N812
+from tqdm import tqdm
 
 from gfmrag.graph_index_datasets.graph_index_dataset import GraphIndexDataset
 from gfmrag.text_emb_models import BaseTextEmbModel
@@ -60,6 +61,8 @@ class HippoRAG2Constructor(BaseSFTConstructor):
         retry: int = 5,
         start_type: list | None = None,
         target_type: list | None = None,
+        llm_base_url: str | None = None,
+        llm_api_key: str | None = None,
     ) -> None:
         """Initialize the HippoRAG 2 SFT constructor.
 
@@ -87,7 +90,7 @@ class HippoRAG2Constructor(BaseSFTConstructor):
         self.start_type = start_type
         self.target_type = target_type
         self.rerank_filter = (
-            DSPyFilter(llm_for_filtering, retry) if enable_filtering else None
+            DSPyFilter(llm_for_filtering, retry, base_url=llm_base_url, api_key=llm_api_key) if enable_filtering else None
         )
 
         self.node_names: list[str] = []
@@ -134,7 +137,7 @@ class HippoRAG2Constructor(BaseSFTConstructor):
         embeddings = self.text_emb_model.encode(
             text,
             is_query=is_query,
-            show_progress_bar=False,
+            show_progress_bar=True,
         )
         if isinstance(embeddings, torch.Tensor):
             emb = embeddings.detach().cpu()
@@ -195,6 +198,7 @@ class HippoRAG2Constructor(BaseSFTConstructor):
         self.node_embeddings_by_type = {}
         self.node_indices_by_type = {}
         for node_type, node_texts in self.node_texts_by_type.items():
+            logger.info(f"Encoding {len(node_texts)} {node_type} nodes...")
             node_embeddings = self._encode_texts(node_texts, is_query=False)
             self.node_embeddings_by_type[node_type] = node_embeddings
             index = self._build_faiss_index(node_embeddings)
@@ -202,6 +206,7 @@ class HippoRAG2Constructor(BaseSFTConstructor):
                 self.node_indices_by_type[node_type] = index
 
         if self.enable_fact_retrieval:
+            logger.info(f"Encoding {len(self.fact_texts)} facts...")
             fact_embeddings = self._encode_texts(self.fact_texts, is_query=False)
             self.fact_index = self._build_faiss_index(fact_embeddings)
         else:
@@ -444,10 +449,12 @@ class HippoRAG2Constructor(BaseSFTConstructor):
         self.index()
 
         queries = [sample["question"] for sample in data]
+        logger.info(f"Encoding {len(queries)} queries...")
         query_embeddings = self._encode_texts(queries, is_query=True)
         answer_embeddings: np.ndarray | None = None
         if "entity" in self.selected_target_types:
             answers = [str(sample.get("answer", "")) for sample in data]
+            logger.info(f"Encoding {len(answers)} answers...")
             answer_embeddings = self._encode_texts(answers, is_query=False)
 
         # Create graph index for each dataset
@@ -461,8 +468,9 @@ class HippoRAG2Constructor(BaseSFTConstructor):
             )
 
         # Precompute query-fact scores sequentially to avoid concurrent embedding inference.
+        logger.info(f"Precomputing fact candidates for {len(data)} samples...")
         prepared_samples: list[dict] = []
-        for idx, sample in enumerate(data):
+        for idx, sample in enumerate(tqdm(data, desc="Fact candidates")):
             query = sample["question"]
             query_embedding = query_embeddings[idx : idx + 1]
             answer_embedding = (
@@ -481,7 +489,7 @@ class HippoRAG2Constructor(BaseSFTConstructor):
                     "idx": idx,
                     "sample": sample,
                     "query": query,
-                    "answer": sample["answer"],
+                    "answer": sample.get("answer", ""),
                     "query_embedding": query_embedding,
                     "answer_embedding": answer_embedding,
                     "candidate_fact_indices": candidate_fact_indices,
@@ -513,8 +521,10 @@ class HippoRAG2Constructor(BaseSFTConstructor):
                 logger.error(f"Parallel rerank failed for sample index {idx}: {str(e)}")
                 return idx, [], []
 
+        filter_mode = "LLM filtering" if self.enable_filtering else "top-k truncation"
+        logger.info(f"Reranking facts for {len(prepared_samples)} samples ({filter_mode}, {max_workers} worker(s))...")
         if max_workers == 1:
-            for item in prepared_samples:
+            for item in tqdm(prepared_samples, desc="Reranking facts"):
                 _, top_k_fact_indices, top_k_facts = _rerank_item(item)
                 rerank_results[item["idx"]] = (top_k_fact_indices, top_k_facts)
         else:
@@ -524,7 +534,8 @@ class HippoRAG2Constructor(BaseSFTConstructor):
                 ):
                     rerank_results[idx] = (top_k_fact_indices, top_k_facts)
 
-        # # Prepare final data
+        # Prepare final data
+        logger.info("Assembling final samples with start/target nodes...")
         final_data = []
         for item in prepared_samples:
             sample = item["sample"]
@@ -591,6 +602,7 @@ class HippoRAG2Constructor(BaseSFTConstructor):
                 }
             )
 
+        logger.info(f"Done — {len(final_data)} samples prepared.")
         return final_data
 
     def graph_search_with_fact_entities(

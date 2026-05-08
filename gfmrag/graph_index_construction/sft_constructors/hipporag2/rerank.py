@@ -18,6 +18,30 @@ best_dspy_prompt = {
         "demos": [
             {
                 "augmented": True,
+                "question": "¿Qué transformación físico-química experimenta el cuarzo a 573 °C y cuál es su naturaleza térmica?",
+                "fact_before_filter": '{"fact": [["cuarzo α", "se transforma en", "cuarzo β"], ["transformación alotrópica del cuarzo", "ocurre a", "573 °c"], ["transformación alotrópica", "es de naturaleza", "endotérmica"], ["feldespato", "funde a temperatura de", "1150 °c"], ["cuarzo", "es componente de", "pasta cerámica"]]}',
+                "fact_after_filter": '{"fact":[["cuarzo α","se transforma en","cuarzo β"],["transformación alotrópica del cuarzo","ocurre a","573 °c"],["transformación alotrópica","es de naturaleza","endotérmica"]]}',
+            },
+            {
+                "augmented": True,
+                "question": "¿Qué representa el Módulo de Rotura (R) en el ensayo de resistencia a la flexión y en qué se diferencia de la Fuerza de Rotura (S)?",
+                "fact_before_filter": '{"fact": [["módulo de rotura", "normaliza la carga por", "anchura y espesor al cuadrado"], ["módulo de rotura", "representa", "resistencia intrínseca del material"], ["fuerza de rotura", "normaliza por", "anchura"], ["carga de rotura", "es la fuerza máxima en", "newtons"], ["sinterización", "reduce", "porosidad"]]}',
+                "fact_after_filter": '{"fact":[["módulo de rotura","normaliza la carga por","anchura y espesor al cuadrado"],["módulo de rotura","representa","resistencia intrínseca del material"],["fuerza de rotura","normaliza por","anchura"]]}',
+            },
+            {
+                "augmented": True,
+                "question": "¿Por qué una pieza cerámica se expande ligeramente después de ser extraída del molde de prensado?",
+                "fact_before_filter": '{"fact": [["expansión post-prensado", "es causada por", "recuperación de deformación elástica"], ["deformación elástica", "se acumula durante", "compactación"], ["presión de prensado", "compacta", "polvo cerámico"], ["molde de prensado", "fabrica", "baldosas cerámicas"], ["atomización", "produce", "polvo cerámico granulado"]]}',
+                "fact_after_filter": '{"fact":[["expansión post-prensado","es causada por","recuperación de deformación elástica"],["deformación elástica","se acumula durante","compactación"]]}',
+            },
+            {
+                "augmented": True,
+                "question": "¿Qué tecnologías son consideradas Mejores Técnicas Disponibles (MTD) para el control de emisiones de partículas en planta cerámica?",
+                "fact_before_filter": '{"fact": [["tecnologías de depuración de partículas", "son consideradas", "mejores técnicas disponibles  mtd"], ["control de emisiones atmosféricas", "es pilar de", "gestión de planta cerámica"], ["métodos de control", "se aplican a", "atomización"], ["industria cerámica moderna", "opera en entorno de", "exigencia regulatoria"], ["accidente laboral", "es concepto de", "seguridad y salud laboral"]]}',
+                "fact_after_filter": '{"fact":[["tecnologías de depuración de partículas","son consideradas","mejores técnicas disponibles  mtd"],["control de emisiones atmosféricas","es pilar de","gestión de planta cerámica"],["métodos de control","se aplican a","atomización"]]}',
+            },
+            {
+                "augmented": True,
                 "question": "Are Imperial River (Florida) and Amaradia (Dolj) both located in the same country?",
                 "fact_before_filter": '{"fact": [["imperial river", "is located in", "florida"], ["imperial river", "is a river in", "united states"], ["imperial river", "may refer to", "south america"], ["amaradia", "flows through", "ro ia de amaradia"], ["imperial river", "may refer to", "united states"]]}',
                 "fact_after_filter": '{"fact":[["imperial river","is located in","florida"],["imperial river","is a river in","united states"],["amaradia","flows through","ro ia de amaradia"]]}',
@@ -100,7 +124,13 @@ class Fact(BaseModel):
 
 
 class DSPyFilter:
-    def __init__(self, llm_for_filtering: str = "gpt-4o-mini", retry: int = 5) -> None:
+    def __init__(
+        self,
+        llm_for_filtering: str = "gpt-4o-mini",
+        retry: int = 5,
+        base_url: str | None = None,
+        api_key: str | None = None,
+    ) -> None:
         """
         Initializes the object with the necessary configurations and templates for processing input and output messages.
 
@@ -120,7 +150,7 @@ class DSPyFilter:
         self.one_input_template = """[[ ## question ## ]]\n{question}\n\n[[ ## fact_before_filter ## ]]\n{fact_before_filter}\n\nRespond with the corresponding output fields, starting with the field `[[ ## fact_after_filter ## ]]` (must be formatted as a valid Python Fact), and then ending with the marker for `[[ ## completed ## ]]`."""
         self.one_output_template = """[[ ## fact_after_filter ## ]]\n{fact_after_filter}\n\n[[ ## completed ## ]]"""
         self.message_template = self.make_template(dspy_file_path)
-        self.llm_infer_fn = ChatGPT(model_name_or_path=llm_for_filtering, retry=retry)
+        self.llm_infer_fn = ChatGPT(model_name_or_path=llm_for_filtering, retry=retry, base_url=base_url, api_key=api_key)
         self.model_name = llm_for_filtering
         self.default_gen_kwargs: dict[str, Any] = {}
 
@@ -155,6 +185,18 @@ class DSPyFilter:
             )
         return message_template
 
+    def _recover_flat_triples(self, value: str) -> dict | None:
+        """Recover when the model outputs flat lists instead of nested lists.
+
+        Handles the pattern: {"fact": ["s","p","o"], ["s","p","o"], ...}
+        which should be:     {"fact": [["s","p","o"], ["s","p","o"], ...]}
+        """
+        triple_pattern = re.compile(r'\[\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\]')
+        triples = triple_pattern.findall(value)
+        if triples:
+            return {"fact": [list(t) for t in triples]}
+        return None
+
     def parse_filter(self, response: str) -> list:
         sections: list[tuple[str | None, list[str]]] = [(None, [])]  # [(None, [])]
         field_header_pattern = re.compile("\\[\\[ ## (\\w+) ## \\]\\]")
@@ -172,7 +214,6 @@ class DSPyFilter:
         for k, value in joined_sections:
             if k == "fact_after_filter":
                 try:
-                    # fields[k] = parse_value(v, signature.output_fields[k].annotation) if _parse_values else v
                     try:
                         parsed_value = json.loads(value)
                     except json.JSONDecodeError:
@@ -182,9 +223,18 @@ class DSPyFilter:
                             parsed_value = value
                     parsed = TypeAdapter(Fact).validate_python(parsed_value).fact
                 except Exception as e:
-                    print(
-                        f"Error parsing field {k}: {e}.\n\n\t\tOn attempting to parse the value\n```\n{value}\n```"
-                    )
+                    recovered = self._recover_flat_triples(value)
+                    if recovered:
+                        try:
+                            parsed = TypeAdapter(Fact).validate_python(recovered).fact
+                        except Exception:
+                            print(
+                                f"Error parsing field {k}: {e}.\n\n\t\tOn attempting to parse the value\n```\n{value}\n```"
+                            )
+                    else:
+                        print(
+                            f"Error parsing field {k}: {e}.\n\n\t\tOn attempting to parse the value\n```\n{value}\n```"
+                        )
 
         return parsed
 

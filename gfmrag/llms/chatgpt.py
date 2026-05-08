@@ -3,6 +3,7 @@ import os
 import time
 
 import dotenv
+import requests
 import tiktoken
 from openai import OpenAI
 
@@ -24,23 +25,20 @@ OPENAI_MODEL = ["gpt-4", "gpt-3.5-turbo"]
 def get_token_limit(model: str = "gpt-4") -> int:
     """Returns the token limitation of provided model"""
     if model in ["gpt-4", "gpt-4-0613"]:
-        num_tokens_limit = 8192
+        return 8192
     elif model in ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"]:
-        num_tokens_limit = 128000
+        return 128000
     elif model in ["gpt-3.5-turbo-16k", "gpt-3.5-turbo-16k-0613"]:
-        num_tokens_limit = 16384
+        return 16384
     elif model in [
         "gpt-3.5-turbo",
         "gpt-3.5-turbo-0613",
         "text-davinci-003",
         "text-davinci-002",
     ]:
-        num_tokens_limit = 4096
+        return 4096
     else:
-        raise NotImplementedError(
-            f"""get_token_limit() is not implemented for model {model}."""
-        )
-    return num_tokens_limit
+        return 32768  # safe default for vLLM / unknown models
 
 
 class ChatGPT(BaseLanguageModel):
@@ -68,22 +66,44 @@ class ChatGPT(BaseLanguageModel):
         Exception: If generation fails after maximum retries
     """
 
-    def __init__(self, model_name_or_path: str, retry: int = 5):
+    def __init__(
+        self,
+        model_name_or_path: str,
+        retry: int = 5,
+        base_url: str | None = None,
+        api_key: str | None = None,
+    ):
         self.retry = retry
         self.model_name = model_name_or_path
         self.maximun_token = get_token_limit(self.model_name)
 
-        client = OpenAI()
-        self.client = client
+        self._base_url = base_url
+        self.client = OpenAI(
+            base_url=base_url,
+            api_key=api_key or os.environ.get("OPENAI_API_KEY") or "EMPTY",
+        )
 
     def token_len(self, text: str) -> int:
-        """Returns the number of tokens used by a list of messages."""
+        """Returns the number of tokens in text.
+
+        Uses the vLLM /tokenize endpoint when a base_url is set (accurate for
+        any model), otherwise falls back to tiktoken (GPT models) or cl100k_base.
+        """
+        if self._base_url:
+            tokenize_url = self._base_url.rstrip("/").removesuffix("/v1") + "/tokenize"
+            resp = requests.post(
+                tokenize_url,
+                json={"model": self.model_name, "prompt": text},
+                timeout=10,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            return data.get("count", len(data.get("tokens", [])))
         try:
             encoding = tiktoken.encoding_for_model(self.model_name)
-            num_tokens = len(encoding.encode(text))
-        except KeyError as e:
-            raise KeyError(f"Warning: model {self.model_name} not found.") from e
-        return num_tokens
+        except KeyError:
+            encoding = tiktoken.get_encoding("cl100k_base")
+        return len(encoding.encode(text))
 
     def generate_sentence(
         self, llm_input: str | list, system_input: str = ""

@@ -6,6 +6,8 @@ num_processes: 1 # Number of processes to use
 topk: 5 # Top-k nodes to be selected for each question for SFT data construction
 llm_for_filtering: gpt-4o-mini # The name of the language model to use for filtering facts
 retry: 5 # Number of retries for LLM inference in case of failure
+llm_base_url: null # Base URL for vLLM/OpenAI-compatible server (null = use OPENAI_API_KEY)
+llm_api_key: null # API key (null = use OPENAI_API_KEY env var, or "EMPTY" for local vLLM)
 force: False # Whether to force recompute the QA data
 start_type: ["entity", "document"]
 target_type: ["entity", "document"]

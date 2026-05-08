@@ -62,8 +62,24 @@ def main(cfg: DictConfig) -> None:
             f"Datasets {cfg.datasets.train_names} and {cfg.datasets.valid_names} initialized"
         )
 
-    # Load model from pre-trained format, which would overwrite the model configuration
-    if cfg.load_model_from_pretrained:
+    # Load model: three modes depending on config
+    if cfg.get("load_pretrained_weights"):
+        # Create model from Hydra config first, then load compatible weights (strict=False).
+        # Layers with shape mismatches (e.g. input projection after embedding dim change)
+        # are skipped and remain randomly initialized.
+        model = instantiate(cfg.model, feat_dim=feat_dim.pop())
+        missing, unexpected = utils.load_pretrained_weights(
+            model, cfg.load_pretrained_weights
+        )
+        logger.info(
+            f"Loaded pretrained weights (strict=False) from {cfg.load_pretrained_weights}"
+        )
+        if missing:
+            logger.info(f"  Randomly initialized (shape mismatch): {missing}")
+        if unexpected:
+            logger.info(f"  Ignored (not in model): {unexpected}")
+    elif cfg.load_model_from_pretrained:
+        # Load model from pre-trained format, which would overwrite the model configuration
         model, _ = utils.load_model_from_pretrained(cfg.load_model_from_pretrained)
         logger.info(f"Loaded pre-trained model from {cfg.load_model_from_pretrained}")
     else:

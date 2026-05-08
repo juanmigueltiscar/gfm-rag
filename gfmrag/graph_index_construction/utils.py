@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import unicodedata
 import uuid
 from typing import Any
 
@@ -10,7 +11,9 @@ KG_DELIMITER = ","
 def processing_phrases(phrase: str) -> str:
     if isinstance(phrase, int):
         return str(phrase)  # deal with the int values
-    return re.sub("[^A-Za-z0-9 ]", " ", phrase.lower()).strip()
+    nfd = unicodedata.normalize("NFD", phrase)
+    no_diacritics = "".join(c for c in nfd if unicodedata.category(c) != "Mn")
+    return re.sub("[^A-Za-z0-9 ]", " ", no_diacritics.lower()).strip()
 
 
 def directory_exists(path: str) -> None:

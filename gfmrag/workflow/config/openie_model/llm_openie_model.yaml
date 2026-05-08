@@ -1,6 +1,8 @@
 _target_: gfmrag.graph_index_construction.openie_model.LLMOPENIEModel
 llm_api: openai
 model_name: gpt-4o-mini
-max_ner_tokens: 300
+max_ner_tokens: 1024
 max_triples_tokens: 4096
 json_mode: true
+base_url: null
+api_key: null
