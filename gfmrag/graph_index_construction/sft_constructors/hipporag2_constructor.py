@@ -90,7 +90,11 @@ class HippoRAG2Constructor(BaseSFTConstructor):
         self.start_type = start_type
         self.target_type = target_type
         self.rerank_filter = (
-            DSPyFilter(llm_for_filtering, retry, base_url=llm_base_url, api_key=llm_api_key) if enable_filtering else None
+            DSPyFilter(
+                llm_for_filtering, retry, base_url=llm_base_url, api_key=llm_api_key
+            )
+            if enable_filtering
+            else None
         )
 
         self.node_names: list[str] = []
@@ -522,7 +526,9 @@ class HippoRAG2Constructor(BaseSFTConstructor):
                 return idx, [], []
 
         filter_mode = "LLM filtering" if self.enable_filtering else "top-k truncation"
-        logger.info(f"Reranking facts for {len(prepared_samples)} samples ({filter_mode}, {max_workers} worker(s))...")
+        logger.info(
+            f"Reranking facts for {len(prepared_samples)} samples ({filter_mode}, {max_workers} worker(s))..."
+        )
         if max_workers == 1:
             for item in tqdm(prepared_samples, desc="Reranking facts"):
                 _, top_k_fact_indices, top_k_facts = _rerank_item(item)

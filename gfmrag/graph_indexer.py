@@ -57,20 +57,30 @@ class GraphIndexer:
             data = json.load(f)
         processed = []
         for sample in data:
-            target_docs = sample.get("supporting_documents", sample.get("supporting_facts", []))
-            processed.append({
-                **sample,
-                "supporting_documents": target_docs,
-                "start_type": ["entity"],
-                "target_type": ["entity", "document"],
-                "start_nodes": {
-                    "entity": [processing_phrases(e) for e in sample.get("question_entities", [])],
-                },
-                "target_nodes": {
-                    "entity": [processing_phrases(e) for e in sample.get("supporting_entities", [])],
-                    "document": target_docs,
-                },
-            })
+            target_docs = sample.get(
+                "supporting_documents", sample.get("supporting_facts", [])
+            )
+            processed.append(
+                {
+                    **sample,
+                    "supporting_documents": target_docs,
+                    "start_type": ["entity"],
+                    "target_type": ["entity", "document"],
+                    "start_nodes": {
+                        "entity": [
+                            processing_phrases(e)
+                            for e in sample.get("question_entities", [])
+                        ],
+                    },
+                    "target_nodes": {
+                        "entity": [
+                            processing_phrases(e)
+                            for e in sample.get("supporting_entities", [])
+                        ],
+                        "document": target_docs,
+                    },
+                }
+            )
         with open(out_path, "w") as f:
             json.dump(processed, f, indent=4)
         logger.info(f"Fast migration complete: {len(processed)} samples → {out_path}")

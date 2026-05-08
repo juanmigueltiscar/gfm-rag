@@ -26,7 +26,9 @@ def init_langchain_model(
         # https://python.langchain.com/v0.1/docs/integrations/chat/openai/
 
         assert model_name.startswith("gpt-")
-        kwargs.pop("api_key", None)   # avoid duplicate keyword when forwarded from NER/OpenIE models
+        kwargs.pop(
+            "api_key", None
+        )  # avoid duplicate keyword when forwarded from NER/OpenIE models
         kwargs.pop("base_url", None)  # not used for openai provider
         return ChatOpenAI(
             api_key=os.environ.get("OPENAI_API_KEY"),

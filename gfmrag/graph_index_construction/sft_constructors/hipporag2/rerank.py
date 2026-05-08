@@ -150,7 +150,12 @@ class DSPyFilter:
         self.one_input_template = """[[ ## question ## ]]\n{question}\n\n[[ ## fact_before_filter ## ]]\n{fact_before_filter}\n\nRespond with the corresponding output fields, starting with the field `[[ ## fact_after_filter ## ]]` (must be formatted as a valid Python Fact), and then ending with the marker for `[[ ## completed ## ]]`."""
         self.one_output_template = """[[ ## fact_after_filter ## ]]\n{fact_after_filter}\n\n[[ ## completed ## ]]"""
         self.message_template = self.make_template(dspy_file_path)
-        self.llm_infer_fn = ChatGPT(model_name_or_path=llm_for_filtering, retry=retry, base_url=base_url, api_key=api_key)
+        self.llm_infer_fn = ChatGPT(
+            model_name_or_path=llm_for_filtering,
+            retry=retry,
+            base_url=base_url,
+            api_key=api_key,
+        )
         self.model_name = llm_for_filtering
         self.default_gen_kwargs: dict[str, Any] = {}
 
@@ -191,7 +196,9 @@ class DSPyFilter:
         Handles the pattern: {"fact": ["s","p","o"], ["s","p","o"], ...}
         which should be:     {"fact": [["s","p","o"], ["s","p","o"], ...]}
         """
-        triple_pattern = re.compile(r'\[\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\]')
+        triple_pattern = re.compile(
+            r'\[\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\]'
+        )
         triples = triple_pattern.findall(value)
         if triples:
             return {"fact": [list(t) for t in triples]}

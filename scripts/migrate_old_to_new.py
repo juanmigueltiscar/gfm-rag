@@ -72,10 +72,16 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Migrate old GFM-RAG stage1 data to new CSV format"
     )
-    parser.add_argument("--old-dir", default="data/master_ceramica_old_format",
-                        help="Base directory of the old-format dataset")
-    parser.add_argument("--out-dir", default="data/master_ceramica",
-                        help="Base directory of the new-format dataset")
+    parser.add_argument(
+        "--old-dir",
+        default="data/master_ceramica_old_format",
+        help="Base directory of the old-format dataset",
+    )
+    parser.add_argument(
+        "--out-dir",
+        default="data/master_ceramica",
+        help="Base directory of the new-format dataset",
+    )
     parser.add_argument(
         "--threshold",
         type=float,
@@ -404,7 +410,8 @@ def main() -> None:
     out_documents = os.path.join(out_raw_dir, "documents.json")
     if not args.force and os.path.exists(out_documents):
         logger.warning(
-            "%s already exists — skipping raw copy. Use --force to overwrite.", out_documents
+            "%s already exists — skipping raw copy. Use --force to overwrite.",
+            out_documents,
         )
     else:
         old_raw_dir = os.path.join(args.old_dir, "raw")
@@ -419,38 +426,61 @@ def main() -> None:
                     qa_data = json.load(f)
                 renamed = 0
                 for sample in qa_data:
-                    if "supporting_facts" in sample and "supporting_documents" not in sample:
+                    if (
+                        "supporting_facts" in sample
+                        and "supporting_documents" not in sample
+                    ):
                         sample["supporting_documents"] = sample.pop("supporting_facts")
                         renamed += 1
                 with open(dst, "w", encoding="utf-8") as f:
                     json.dump(qa_data, f, ensure_ascii=False, indent=4)
-                logger.info("  raw: %s -> %s  (renamed supporting_facts in %d samples)", fname, dst_name, renamed)
+                logger.info(
+                    "  raw: %s -> %s  (renamed supporting_facts in %d samples)",
+                    fname,
+                    dst_name,
+                    renamed,
+                )
 
                 # If samples have pre-annotated entities, write processed/stage1/ directly.
                 has_entities = qa_data and (
-                    "question_entities" in qa_data[0] and "supporting_entities" in qa_data[0]
+                    "question_entities" in qa_data[0]
+                    and "supporting_entities" in qa_data[0]
                 )
                 processed_out = os.path.join(out_stage1_dir, fname)
                 if has_entities and (args.force or not os.path.exists(processed_out)):
                     processed_data = []
                     for sample in qa_data:
-                        target_docs = sample.get("supporting_documents", sample.get("supporting_facts", []))
-                        processed_data.append({
-                            **sample,
-                            "supporting_documents": target_docs,
-                            "start_type": ["entity"],
-                            "target_type": ["entity", "document"],
-                            "start_nodes": {
-                                "entity": [processing_phrases(e) for e in sample.get("question_entities", [])],
-                            },
-                            "target_nodes": {
-                                "entity": [processing_phrases(e) for e in sample.get("supporting_entities", [])],
-                                "document": target_docs,
-                            },
-                        })
+                        target_docs = sample.get(
+                            "supporting_documents", sample.get("supporting_facts", [])
+                        )
+                        processed_data.append(
+                            {
+                                **sample,
+                                "supporting_documents": target_docs,
+                                "start_type": ["entity"],
+                                "target_type": ["entity", "document"],
+                                "start_nodes": {
+                                    "entity": [
+                                        processing_phrases(e)
+                                        for e in sample.get("question_entities", [])
+                                    ],
+                                },
+                                "target_nodes": {
+                                    "entity": [
+                                        processing_phrases(e)
+                                        for e in sample.get("supporting_entities", [])
+                                    ],
+                                    "document": target_docs,
+                                },
+                            }
+                        )
                     with open(processed_out, "w", encoding="utf-8") as f:
                         json.dump(processed_data, f, ensure_ascii=False, indent=4)
-                    logger.info("  stage1: %s written (%d samples, fast migration)", fname, len(processed_data))
+                    logger.info(
+                        "  stage1: %s written (%d samples, fast migration)",
+                        fname,
+                        len(processed_data),
+                    )
             else:
                 shutil.copy2(src, dst)
                 logger.info("  raw: %s -> %s", fname, dst_name)
