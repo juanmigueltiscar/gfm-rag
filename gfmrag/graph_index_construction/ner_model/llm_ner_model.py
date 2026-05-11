@@ -165,7 +165,8 @@ class LLMNERModel(BaseNERModel):
                 response_content = {"named_entities": []}
 
         try:
-            ner_list = eval(response_content)["named_entities"]
+            import json
+            ner_list = json.loads(response_content)["named_entities"]
             query_ner_list = [processing_phrases(ner) for ner in ner_list]
             return query_ner_list
         except Exception as e:
