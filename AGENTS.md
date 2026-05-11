@@ -16,6 +16,8 @@ pre-commit run --all-files --show-diff-on-failure
 uv run python -m pytest tests/test_gfmrag_retriever.py -k test_retrieve_top_k
 ```
 
+**Before every commit**: run `source .venv/bin/activate && pre-commit run --all-files` and ensure all checks pass. The CI (`code-quality` workflow) runs the same command — committing without passing it will break CI. `ruff-format` auto-fixes files in place; re-stage them and commit again if it modifies anything.
+
 **Order matters**: lint/format/mypy all run via pre-commit. CI does NOT run unit tests — tests are not in automation, must be run manually.
 
 ## Architecture
