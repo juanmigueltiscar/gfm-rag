@@ -65,6 +65,7 @@ class LLMNERModel(BaseNERModel):
         base_url: str | None = None,
         api_key: str | None = None,
         seed: int | None = None,
+        num_runs: int = 1,
     ):
         """Initialize the LLM-based NER model.
 
@@ -83,6 +84,8 @@ class LLMNERModel(BaseNERModel):
                 Defaults to None.
             seed (int | None): Fixed random seed passed to the LLM for reproducible outputs.
                 Defaults to None (no seed, non-deterministic).
+            num_runs (int): Number of times to run NER and take the union of results.
+                Increases robustness when the LLM is non-deterministic. Defaults to 1.
         """
 
         self.llm_api = llm_api
@@ -90,6 +93,7 @@ class LLMNERModel(BaseNERModel):
         self.max_tokens = max_tokens
         self.json_mode = json_mode
         self.seed = seed
+        self.num_runs = max(1, num_runs)
 
         self.client = init_langchain_model(
             llm_api,
@@ -98,28 +102,7 @@ class LLMNERModel(BaseNERModel):
             api_key=api_key,
         )
 
-    def __call__(self, text: str) -> list:
-        """Process text input to extract named entities using different chat models.
-
-        This method handles entity extraction using various chat models (OpenAI, Ollama, LlamaCpp),
-        with special handling for JSON mode responses.
-
-        Args:
-            text (str): The input text to extract named entities from.
-
-        Returns:
-            list: A list of processed named entities extracted from the text.
-                 Returns empty list if extraction fails.
-
-        Raises:
-            None: Exceptions are caught and handled internally, logging errors when they occur.
-
-        Examples:
-            >>> ner_model = NERModel()
-            >>> entities = ner_model("Sample text with named entities")
-            >>> print(entities)
-            ['Entity1', 'Entity2']
-        """
+    def _call_once(self, text: str) -> list:
         query_ner_prompts = ChatPromptTemplate.from_messages(
             [
                 SystemMessage("You're a very effective entity extraction system."),
@@ -176,8 +159,26 @@ class LLMNERModel(BaseNERModel):
             import json
 
             ner_list = json.loads(response_content)["named_entities"]
-            query_ner_list = [processing_phrases(ner) for ner in ner_list]
-            return query_ner_list
+            return [processing_phrases(ner) for ner in ner_list]
         except Exception as e:
             logger.error(f"Error in extracting named entities: {e}")
             return []
+
+    def __call__(self, text: str) -> list:
+        """Process text input to extract named entities using different chat models.
+
+        Runs NER `num_runs` times and returns the union of results (preserving first-seen order).
+        Multiple runs improve robustness when the LLM is non-deterministic at temperature=0.
+
+        Args:
+            text (str): The input text to extract named entities from.
+
+        Returns:
+            list: A list of processed named entities extracted from the text.
+                 Returns empty list if extraction fails.
+        """
+        seen: dict[str, None] = {}
+        for _ in range(self.num_runs):
+            for entity in self._call_once(text):
+                seen[entity] = None
+        return list(seen.keys())

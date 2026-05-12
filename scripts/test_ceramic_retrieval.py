@@ -100,6 +100,7 @@ def main() -> None:
         max_tokens=int(os.getenv("VLLM_MAX_TOKENS", "512")),
         json_mode=True,
         seed=42,
+        num_runs=2,
     )
     logger.info("NER model ready")
 
