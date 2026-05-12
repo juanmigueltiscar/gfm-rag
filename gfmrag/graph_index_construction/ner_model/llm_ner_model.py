@@ -166,6 +166,7 @@ class LLMNERModel(BaseNERModel):
 
         try:
             import json
+
             ner_list = json.loads(response_content)["named_entities"]
             query_ner_list = [processing_phrases(ner) for ner in ner_list]
             return query_ner_list
