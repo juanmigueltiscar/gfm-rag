@@ -104,6 +104,22 @@ def main() -> None:
     )
     logger.info("NER model ready")
 
+    # --- NER reproducibility test ---
+    ner_test_query = "¿Cuáles son las principales causas de defectos en la decoración inkjet, excluyendo la formulación de la tinta?"
+    logger.info("Testing NER reproducibility (5 runs) for: %s", ner_test_query)
+    sep = "=" * 60
+    print(f"\n{sep}")
+    print("NER reproducibility test (num_runs=2, union per call)")
+    print(sep)
+    ner_results = []
+    for i in range(5):
+        entities = ner_model(ner_test_query)
+        ner_results.append(entities)
+        print(f"  Call {i + 1}: {entities}")
+    all_same = all(set(r) == set(ner_results[0]) for r in ner_results)
+    print(f"  All 5 calls identical: {all_same}")
+    print(sep)
+
     logger.info("Initializing vLLM-based OpenIE model (%s)...", vllm_model)
     openie_model = LLMOPENIEModel(
         llm_api="vllm",
@@ -177,11 +193,26 @@ def main() -> None:
     )
     logger.info("GFMRetriever ready")
 
+    # --- Retrieval reproducibility test ---
+    repro_query = "¿Cuáles son las principales causas de defectos en la decoración inkjet, excluyendo la formulación de la tinta?"
+    logger.info("Testing retrieval reproducibility (5 runs) for: %s", repro_query)
+    print(f"\n{sep}")
+    print("Retrieval reproducibility test")
+    print(sep)
+    repro_top1s = []
+    for i in range(5):
+        res = retriever.retrieve(repro_query, top_k=5)
+        top1 = res["document"][0]
+        repro_top1s.append(top1["id"])
+        print(f"  Run {i + 1}  #1: {top1['id'][:60]:60s}  score={top1['score']:.4f}")
+    all_same = len(set(repro_top1s)) == 1
+    print(f"  Top-1 consistent across 5 runs: {all_same}")
+    print(sep)
+
     query = "¿Cuál es el riesgo de imprimir sobre baldosas a temperaturas superiores a 55°C?"
     logger.info("Running single-query retrieval for: %s", query)
     results = retriever.retrieve(query, top_k=5)
 
-    sep = "=" * 60
     print(f"\n{sep}")
     print(f"Single query: {query}")
     print(sep)
