@@ -349,7 +349,7 @@ Tensor rspmm_forward_cuda(const Tensor &edge_index_, const Tensor &edge_type_, c
     int64_t nnz = edge_index.size(1);
     int64_t num_row = input.size(0);
     int64_t dim = input.size(1);
-    Tensor output = at::empty({num_row, dim}, input.options());
+    Tensor output = at::zeros({num_row, dim}, input.options());
 
     Tensor row_ind = edge_index.select(0, 0);
     Tensor row_ptr = ind2ptr(row_ind, num_row);

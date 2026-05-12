@@ -148,7 +148,11 @@ class QueryGNN(BaseGNNModel):
         # relations are the same all positive and negative triples, so we can extract only one from the first triple among 1+nug_negs
         batch_size = len(batch)
         relation_representations = (
-            self.rel_mlp(graph.rel_attr).unsqueeze(0).expand(batch_size, -1, -1)
+            self.rel_mlp(graph.rel_attr).unsqueeze(0).repeat(batch_size, 1, 1)
+        )
+        # Double for inverse relations (ULTRA convention uses same embedding)
+        relation_representations = torch.cat(
+            [relation_representations, relation_representations], dim=1
         )
         h_index, t_index, r_index = batch.unbind(-1)
 
@@ -167,7 +171,7 @@ class QueryGNN(BaseGNNModel):
         ]  # take the first relation index for all triples in the batch
 
         # Get the input embedding for the query head and relation
-        raw_rel_emb = graph.rel_attr.unsqueeze(0).expand(batch_size, -1, -1)
+        raw_rel_emb = graph.rel_attr.unsqueeze(0).repeat(batch_size, 1, 1)
         query_relation_emb = raw_rel_emb[
             torch.arange(batch_size, device=r_index.device), query_relation
         ]
@@ -261,7 +265,11 @@ class GraphReasoner(QueryGNN):
         question_embedding = self.question_mlp(question_emb)  # shape: (bs, emb_dim)
         batch_size = question_embedding.size(0)
         relation_representations = (
-            self.rel_mlp(graph.rel_attr).unsqueeze(0).expand(batch_size, -1, -1)
+            self.rel_mlp(graph.rel_attr).unsqueeze(0).repeat(batch_size, 1, 1)
+        )
+        # Double for inverse relations (ULTRA convention uses same embedding)
+        relation_representations = torch.cat(
+            [relation_representations, relation_representations], dim=1
         )
 
         # initialize the input with the fuzzy set and question embs
@@ -293,7 +301,7 @@ class GraphReasoner(QueryGNN):
         )  # shape: (bs, num_nodes, emb_dim)
         if self.use_ent_emb == "late-fusion":
             ent_late_emb = (
-                self.ent_mlp(graph.x).unsqueeze(0).expand(batch_size, -1, -1)
+                self.ent_mlp(graph.x).unsqueeze(0).repeat(batch_size, 1, 1)
             )  # shape: (bs, num_nodes, emb_dim)
             output = self.predict_mlp(
                 torch.cat([output, ent_late_emb], dim=-1)
@@ -301,7 +309,7 @@ class GraphReasoner(QueryGNN):
         elif self.use_ent_emb == "early-late-fusion":
             output = self.predict_mlp(
                 torch.cat(
-                    [output, ent_emb.unsqueeze(0).expand(batch_size, -1, -1)], dim=-1
+                    [output, ent_emb.unsqueeze(0).repeat(batch_size, 1, 1)], dim=-1
                 )
             ).squeeze(-1)  # shape: (bs, num_nodes)
 
@@ -345,7 +353,11 @@ class GraphReasoner(QueryGNN):
         assert batch_size == 1, "Currently only supports batch size 1 for visualization"
 
         relation_representations = (
-            self.rel_mlp(graph.rel_attr).unsqueeze(0).expand(batch_size, -1, -1)
+            self.rel_mlp(graph.rel_attr).unsqueeze(0).repeat(batch_size, 1, 1)
+        )
+        # Double for inverse relations (ULTRA convention uses same embedding)
+        relation_representations = torch.cat(
+            [relation_representations, relation_representations], dim=1
         )
 
         # initialize the input with the fuzzy set and question embs
@@ -382,7 +394,7 @@ class GraphReasoner(QueryGNN):
 
         if self.use_ent_emb == "late-fusion":
             ent_late_emb = (
-                self.ent_mlp(graph.x).unsqueeze(0).expand(batch_size, -1, -1)
+                self.ent_mlp(graph.x).unsqueeze(0).repeat(batch_size, 1, 1)
             )  # shape: (bs, num_nodes, emb_dim)
             all_score = self.predict_mlp(
                 torch.cat([node_feature, ent_late_emb], dim=-1)
@@ -390,7 +402,7 @@ class GraphReasoner(QueryGNN):
         elif self.use_ent_emb == "early-late-fusion":
             all_score = self.predict_mlp(
                 torch.cat(
-                    [node_feature, ent_emb.unsqueeze(0).expand(batch_size, -1, -1)],
+                    [node_feature, ent_emb.unsqueeze(0).repeat(batch_size, 1, 1)],
                     dim=-1,
                 )
             ).squeeze(-1)  # shape: (bs, num_nodes)

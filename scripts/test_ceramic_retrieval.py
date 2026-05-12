@@ -99,7 +99,6 @@ def main() -> None:
         api_key=vllm_api_key,
         max_tokens=int(os.getenv("VLLM_MAX_TOKENS", "512")),
         json_mode=True,
-        seed=42,
         num_runs=2,
     )
     logger.info("NER model ready")

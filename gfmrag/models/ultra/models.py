@@ -468,8 +468,9 @@ class QueryNBFNet(EntityNBFNet):
 
     def forward(self, data, node_features, relation_representations, query):
         # initialize relations in each NBFNet layer (with uinque projection internally)
+        rr = relation_representations.detach().clone()
         for layer in self.layers:
-            layer.relation = relation_representations
+            layer.relation = rr
 
         # we already did traversal_dropout in the outer loop of UltraQuery
         # if self.training:

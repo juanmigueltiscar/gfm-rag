@@ -64,7 +64,6 @@ class LLMNERModel(BaseNERModel):
         json_mode: bool = True,
         base_url: str | None = None,
         api_key: str | None = None,
-        seed: int | None = None,
         num_runs: int = 1,
     ):
         """Initialize the LLM-based NER model.
@@ -82,8 +81,6 @@ class LLMNERModel(BaseNERModel):
                 Defaults to None.
             api_key (str | None): API key for vLLM server. Used when llm_api="vllm".
                 Defaults to None.
-            seed (int | None): Fixed random seed passed to the LLM for reproducible outputs.
-                Defaults to None (no seed, non-deterministic).
             num_runs (int): Number of times to run NER and take the union of results.
                 Increases robustness when the LLM is non-deterministic. Defaults to 1.
         """
@@ -92,7 +89,6 @@ class LLMNERModel(BaseNERModel):
         self.model_name = model_name
         self.max_tokens = max_tokens
         self.json_mode = json_mode
-        self.seed = seed
         self.num_runs = max(1, num_runs)
 
         self.client = init_langchain_model(
@@ -113,8 +109,6 @@ class LLMNERModel(BaseNERModel):
         )
         query_ner_messages = query_ner_prompts.format_prompt()
 
-        extra_kwargs = {} if self.seed is None else {"seed": self.seed}
-
         json_mode_used = False
         if self.json_mode:  # JSON mode
             chat_completion = self.client.invoke(
@@ -123,7 +117,6 @@ class LLMNERModel(BaseNERModel):
                 max_tokens=self.max_tokens,
                 stop=["\n\n"],
                 response_format={"type": "json_object"},
-                **extra_kwargs,
             )
             response_content = chat_completion.content
             chat_completion.response_metadata["token_usage"]["total_tokens"]
@@ -141,7 +134,6 @@ class LLMNERModel(BaseNERModel):
                 temperature=0,
                 max_tokens=self.max_tokens,
                 stop=["\n\n"],
-                **extra_kwargs,
             )
             response_content = chat_completion.content
             response_content = extract_json_dict(response_content)
