@@ -81,7 +81,10 @@ def main() -> None:
 
     data_dir = str(Path(__file__).resolve().parent.parent / "data")
     data_name = "master_ceramica"
-    model_path = "rmanluo/G-reasoner-34M"
+    model_path = str(
+        Path(__file__).resolve().parent.parent
+        / "outputs/qa_finetune/2026-05-08/12-14-07/pretrained"
+    )
 
     from gfmrag.graph_index_construction.entity_linking_model import VLLMELModel
     from gfmrag.graph_index_construction.graph_constructors import KGConstructor
@@ -96,6 +99,7 @@ def main() -> None:
         api_key=vllm_api_key,
         max_tokens=int(os.getenv("VLLM_MAX_TOKENS", "512")),
         json_mode=True,
+        seed=42,
     )
     logger.info("NER model ready")
 
@@ -154,7 +158,7 @@ def main() -> None:
         "batch_size": 32,
         "query_instruct": "Instruct: Given a web search query, retrieve relevant passages that answer the query\nQuery: ",
         "passage_instruct": None,
-        "truncate_dim": 1024,
+        "truncate_dim": None,
     }
 
     logger.info(
@@ -168,6 +172,7 @@ def main() -> None:
         el_model=el_for_query,
         graph_constructor=graph_constructor,
         text_emb_model_cfgs=text_emb_model_cfgs,
+        el_topk=2,
     )
     logger.info("GFMRetriever ready")
 
@@ -184,13 +189,15 @@ def main() -> None:
     print(sep)
 
     queries = [
-        "¿Cuál es el riesgo de imprimir sobre baldosas a temperaturas superiores a 55°C?",
+        "¿De qué manera el ajuste de temperatura en la zona crítica del horno impacta la contracción y planitud de las baldosas cerámicas?",
         "¿Cómo se aprovechan los gases de escape de un atomizador para precalentar el aire?",
-        "¿En qué se diferencian la Ley de Kick y la Ley de Rittinger en la reducción de tamaño?",
+        "¿Cómo influyen la fuerza externa y la gravedad en la definición de viscosidad dinámica y cinemática?",
+        "¿Cuáles son las principales causas de defectos en la decoración inkjet, excluyendo la formulación de la tinta?",
         "¿Qué tintas se añaden para lograr colores vivos en la decoración de revestimientos cerámicos?",
+        "¿Cómo contribuyen los ensayos de abrasión y flexión a garantizar la seguridad y longevidad de los recubrimientos cerámicos en una aplicación arquitectónica?",
     ]
     logger.info("Running batch retrieval for %d queries", len(queries))
-    batch_results = retriever.retrieve(queries, top_k=5, max_batch_size=2)
+    batch_results = retriever.retrieve(queries, top_k=5, max_batch_size=1)
 
     for idx, (q, res) in enumerate(zip(queries, batch_results, strict=False)):
         print(f"\n{sep}")
