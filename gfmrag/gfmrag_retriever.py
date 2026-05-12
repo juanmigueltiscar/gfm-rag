@@ -223,6 +223,11 @@ class GFMRetriever:
             for ent in linked_entities.values()
             if ent[0]["entity"] in self.qa_data.node2id
         ]
+        if not entity_ids:
+            logger.warning(
+                "No entities from the query could be linked to the graph index. "
+                "Graph traversal will be skipped; retrieval falls back to text embeddings only."
+            )
         start_nodes_mask = (
             entities_to_mask(entity_ids, self.num_nodes).unsqueeze(0).to(self.device)
         )  # 1 x num_nodes
@@ -258,8 +263,14 @@ class GFMRetriever:
             linked_entities = {}
 
         masks = []
-        for mentions in all_mentions:
+        for i, mentions in enumerate(all_mentions):
             if len(mentions) == 0:
+                logger.warning(
+                    "No entities found in query %d: %r. Graph traversal will be skipped; "
+                    "retrieval falls back to text embeddings only.",
+                    i,
+                    queries[i],
+                )
                 mask = torch.zeros(self.num_nodes)
             else:
                 entity_ids = [
@@ -268,6 +279,13 @@ class GFMRetriever:
                     if ent in linked_entities
                     and linked_entities[ent][0]["entity"] in self.qa_data.node2id
                 ]
+                if not entity_ids:
+                    logger.warning(
+                        "Entities detected in query %d (%s) but none found in the graph index. "
+                        "Graph traversal will be skipped; retrieval falls back to text embeddings only.",
+                        i,
+                        mentions,
+                    )
                 mask = entities_to_mask(entity_ids, self.num_nodes)
             masks.append(mask)
 

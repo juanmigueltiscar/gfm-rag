@@ -48,6 +48,41 @@ raw/documents.json  -->  processed/stage1/  -->  processed/stage2/{fingerprint}/
 - If `stage1` CSVs already exist, `GFMRetriever.from_index()` skips building; pass `graph_constructor` only for fresh builds.
 - `stage2` output is **gitignored** (`data/*/processed/stage2/`).
 
+## Fine-tuning: config.json flags after training
+
+When a model is fine-tuned with GFM-RAG (e.g. via `gfmrag/workflow/`), the `config.json` saved inside the checkpoint directory contains a `dataset_config` section with these flags:
+
+```json
+"dataset_config": {
+    "use_node_feat": null,
+    "use_relation_feat": null,
+    "use_edge_feat": null,
+    "inverse_relation_feat": null
+}
+```
+
+**These default to `null` (False) and must be manually corrected after training.** The flags control what is embedded and stored in `stage2/graph.pt`:
+
+| Flag | Controls | Required by |
+|---|---|---|
+| `use_relation_feat` | `rel_attr` (relation embeddings) in graph.pt | `GraphReasoner` base pass |
+| `use_node_feat` | `graph.x` (entity embeddings) in graph.pt | `use_ent_emb: "early-late-fusion"` |
+
+If the production model uses `"use_ent_emb": "early-late-fusion"` (as G-reasoner-34M does), **both must be `true`**:
+
+```json
+"use_node_feat": true,
+"use_relation_feat": true
+```
+
+Setting them to `null` causes `graph.x = None` / `rel_attr = None` in graph.pt, which results in runtime errors:
+- `'GlobalStorage' object has no attribute 'rel_attr'` — `use_relation_feat: null`
+- `linear(): argument 'input' (position 1) must be Tensor, not NoneType` — `use_node_feat: null`
+
+**After editing `config.json`, delete `stage2/` to force regeneration** — the subdirectory name is an MD5 fingerprint that includes these flags, so a stale stage2 with wrong embeddings will be used otherwise.
+
+> The public `rmanluo/G-reasoner-34M` checkpoint has these flags set correctly. A freshly fine-tuned checkpoint does not — always verify after training.
+
 ## Gotchas
 
 - **`GraphIndexDataset.raw_dir` points to `stage1`**, NOT `raw/` — the naming is misleading.
