@@ -60,6 +60,7 @@ class GFMRetriever:
         node_info: pd.DataFrame,
         device: torch.device,
         max_batch_size: int = 4,
+        el_topk: int = 1,
     ) -> None:
         self.qa_data = qa_data
         self.graph = qa_data.graph
@@ -70,6 +71,7 @@ class GFMRetriever:
         self.node_info = node_info
         self.device = device
         self.max_batch_size = max_batch_size
+        self.el_topk = el_topk
         self.num_nodes = self.graph.num_nodes
 
     @torch.no_grad()
@@ -217,11 +219,12 @@ class GFMRetriever:
                 "No mentioned entities found in the query. Use the query as is for entity linking."
             )
             mentioned_entities = [query]
-        linked_entities = self.el_model(mentioned_entities, topk=1)
+        linked_entities = self.el_model(mentioned_entities, topk=self.el_topk)
         entity_ids = [
-            self.qa_data.node2id[ent[0]["entity"]]
-            for ent in linked_entities.values()
-            if ent[0]["entity"] in self.qa_data.node2id
+            self.qa_data.node2id[link["entity"]]
+            for links in linked_entities.values()
+            for link in links
+            if link["entity"] in self.qa_data.node2id
         ]
         if not entity_ids:
             logger.warning(
@@ -258,7 +261,7 @@ class GFMRetriever:
             unique_mentions.update(mentions)
 
         if unique_mentions:
-            linked_entities = self.el_model(list(unique_mentions), topk=1)
+            linked_entities = self.el_model(list(unique_mentions), topk=self.el_topk)
         else:
             linked_entities = {}
 
@@ -274,10 +277,11 @@ class GFMRetriever:
                 mask = torch.zeros(self.num_nodes)
             else:
                 entity_ids = [
-                    self.qa_data.node2id[linked_entities[ent][0]["entity"]]
+                    self.qa_data.node2id[link["entity"]]
                     for ent in mentions
                     if ent in linked_entities
-                    and linked_entities[ent][0]["entity"] in self.qa_data.node2id
+                    for link in linked_entities[ent]
+                    if link["entity"] in self.qa_data.node2id
                 ]
                 if not entity_ids:
                     logger.warning(
@@ -340,6 +344,7 @@ class GFMRetriever:
         force_reindex: bool = False,
         text_emb_model_cfgs: dict | None = None,
         max_batch_size: int = 4,
+        el_topk: int = 1,
     ) -> "GFMRetriever":
         """Construct a GFMRetriever from a data directory.
 
@@ -436,4 +441,5 @@ class GFMRetriever:
             node_info=nodes_df,
             device=device,
             max_batch_size=max_batch_size,
+            el_topk=el_topk,
         )
