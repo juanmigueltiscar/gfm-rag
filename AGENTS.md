@@ -83,6 +83,31 @@ Setting them to `null` causes `graph.x = None` / `rel_attr = None` in graph.pt, 
 
 > The public `rmanluo/G-reasoner-34M` checkpoint has these flags set correctly. A freshly fine-tuned checkpoint does not — always verify after training.
 
+## Known issues
+
+### Blackwell GPU non-reproducibility (fixed)
+
+On NVIDIA GB10/Blackwell (sm_120, CUDA 13.0, PyTorch 2.11.0), consecutive `retrieve()` calls returned alternating BAD/GOOD results.
+
+**Root cause**: `relation_representations` had 3960 entries (only direct relations from `rel_attr`) but `edge_type` values reach 7919 (direct + inverse). The rspmm CUDA kernel performed an out-of-bounds read on the `relation` tensor for 40767 of 81534 edges. On Blackwell this manifested as alternating output; on other GPUs it worked by accident (adjacent mapped memory).
+
+**Fix** (commit `e62c90e`):
+1. Double `relation_representations` with `torch.cat([rel, rel], dim=1)` so the kernel can index `relation[edge_type]` for inverse edges
+2. Replace `.expand()` with `.repeat()` everywhere to break view chains
+3. Add `detach().clone()` in `QueryNBFNet.forward` as CPU safety net
+4. Initialize rspmm output tensor with `at::zeros()` instead of `at::empty()`
+
+### NER non-determinism (unresolved)
+
+End-to-end retrieval varies between runs (~40% of top-5 documents can differ, especially at positions #3-#5) even after the Blackwell fix. This is caused by **NER non-determinism**, not the GNN retrieval (which is now deterministic).
+
+**Root cause**: The NER model (`LLMNERModel` in `llm_ner_model.py`) calls an LLM through **LiteLLM** (`ChatLiteLLM`), which proxies requests to a vLLM server. LiteLLM's `seed` parameter is **not forwarded** to the underlying LLM — it's silently ignored. This means:
+- Each NER call produces slightly different entity extractions
+- `num_runs` (default 2) mitigates this by taking the union of multiple runs, but doesn't eliminate it
+- The `seed` parameter was removed from `LLMNERModel.__init__` in commit `e62c90e` since it was non-functional
+
+**To fix properly**: Bypass LiteLLM and call vLLM directly via its OpenAI-compatible API for NER, or increase `num_runs`. The current `num_runs=2` provides a reasonable compromise — the top-1 result is always the same document (though with different scores), and the overall document set is semantically coherent regardless of variation.
+
 ## Gotchas
 
 - **`GraphIndexDataset.raw_dir` points to `stage1`**, NOT `raw/` — the naming is misleading.
